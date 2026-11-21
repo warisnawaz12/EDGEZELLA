@@ -910,29 +910,29 @@
     <section id="tab-calculator" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="glass-card p-5 space-y-4">
         <div>
-          <h3 class="text-base font-bold theme-text flex items-center gap-2"><i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i> Easy Lot Size &amp; Risk Calculator</h3>
-          <p class="text-xs theme-sub mt-0.5">Pair select karo, balance aur SL daalo — lot size khud calculate hoga</p>
+          <h3 class="text-base font-bold theme-text flex items-center gap-2"><i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i> Risk &amp; Pip Calculator</h3>
+          <p class="text-xs theme-sub mt-0.5">Select your pair, balance, and risk — SL &amp; TP pips calculate automatically</p>
         </div>
         <div class="space-y-3">
           <div>
-            <label class="block text-[11px] theme-sub mb-1">1. Pair / Instrument Select Karo</label>
+            <label class="block text-[11px] theme-sub mb-1">1. Select Pair / Instrument</label>
             <select id="calcPair" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-semibold">
-              <option value="10" data-unit="Pips" data-sl="50" data-spec="Exness Gold: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">XAU USD</option>
-              <option value="10" data-unit="Pips" data-sl="10" data-spec="Exness Forex: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">GBP USD</option>
-              <option value="10" data-unit="Pips" data-sl="10" data-spec="Exness Forex: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">EUR USD</option>
-              <option value="1" data-unit="Points" data-sl="200" data-spec="Exness Crypto: 1.00 Lot = $1/point | 0.01 Lot = $0.01/pt">BTC/USDT</option>
-              <option value="1" data-unit="Points" data-sl="30" data-spec="Exness NASDAQ: 1.00 Lot = $1/point | 0.01 Lot = $0.01/pt">NASDAQ</option>
+              <option value="10" data-unit="Pips" data-spec="Exness Gold: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">XAU USD</option>
+              <option value="10" data-unit="Pips" data-spec="Exness Forex: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">GBP USD</option>
+              <option value="10" data-unit="Pips" data-spec="Exness Forex: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">EUR USD</option>
+              <option value="1" data-unit="Points" data-spec="Exness Crypto: 1.00 Lot = $1/point | 0.01 Lot = $0.01/pt">BTC/USDT</option>
+              <option value="1" data-unit="Points" data-spec="Exness NASDAQ: 1.00 Lot = $1/point | 0.01 Lot = $0.01/pt">NASDAQ</option>
             </select>
             <div id="calcPairSpec" class="text-[10px] text-indigo-400 mt-1 font-medium">Exness Gold: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip</div>
           </div>
           <div>
-            <label class="block text-[11px] theme-sub mb-1">2. Tumhara Balance ($)</label>
+            <label class="block text-[11px] theme-sub mb-1">2. Account Balance ($)</label>
             <input id="calcBalance" type="number" step="any" value="200" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-bold" />
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label id="calcRiskLabel" class="text-[11px] theme-sub">3. Kitna Loss (%)</label>
+                <label id="calcRiskLabel" class="text-[11px] theme-sub">3. Risk (%)</label>
                 <div class="inline-flex rounded-md theme-card border theme-border p-0.5 text-[10px]">
                   <button type="button" id="calcModePct" class="px-2 py-0.5 rounded bg-indigo-600 text-white font-bold">%</button>
                   <button type="button" id="calcModeUsd" class="px-2 py-0.5 rounded theme-sub font-bold">$</button>
@@ -947,35 +947,43 @@
               </div>
             </div>
             <div>
-              <label id="calcSlLabel" class="block text-[11px] theme-sub mb-1">4. Stop Loss (Pips)</label>
-              <input id="calcSlPips" type="number" step="any" value="50" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-bold" />
+              <label class="block text-[11px] theme-sub mb-1">4. Lot Size</label>
+              <input id="calcLotSize" type="number" step="any" min="0.01" value="0.01" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-bold" />
+              <div class="flex gap-1 mt-1.5">
+                <button type="button" class="lot-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-l="0.01">0.01</button>
+                <button type="button" class="lot-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-l="0.02">0.02</button>
+                <button type="button" class="lot-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-l="0.05">0.05</button>
+                <button type="button" class="lot-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-l="0.10">0.10</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div class="glass-card p-5 flex flex-col justify-between space-y-4">
-        <h3 class="text-sm font-bold theme-text uppercase tracking-wider">Instant Trade Result</h3>
+        <h3 class="text-sm font-bold theme-text uppercase tracking-wider">Instant Trade Plan</h3>
         <div class="grid grid-cols-2 gap-3">
           <div class="p-3.5 rounded-xl theme-card border border-indigo-500/40">
-            <div class="text-[10px] theme-sub uppercase">Is Lot Se Buy/Sell Karo</div>
-            <div id="calcOutLot" class="text-2xl font-extrabold text-indigo-400 mt-1">0.01 Lots</div>
+            <div class="text-[10px] theme-sub uppercase">Max Stop Loss (SL)</div>
+            <div id="calcOutSlPips" class="text-2xl font-extrabold text-indigo-400 mt-1">20.0 Pips</div>
           </div>
           <div class="p-3.5 rounded-xl theme-card border border-rose-500/30">
-            <div class="text-[10px] theme-sub uppercase">Max Loss (-1R)</div>
+            <div class="text-[10px] theme-sub uppercase">Max Risk (-1R)</div>
             <div id="calcOutRisk" class="text-2xl font-extrabold text-rose-500 mt-1">-$2.00</div>
           </div>
           <div class="p-3.5 rounded-xl theme-card border theme-border">
             <div class="text-[10px] theme-sub uppercase">2R Profit Target</div>
-            <div id="calcOut2R" class="text-xl font-extrabold text-emerald-500 mt-1">+$4.00</div><div id="calcOut2RPips" class="text-[10px] theme-sub mt-0.5">100 Pips TP</div>
+            <div id="calcOut2R" class="text-xl font-extrabold text-emerald-500 mt-1">+$4.00</div>
+            <div id="calcOut2RPips" class="text-[10px] theme-sub mt-0.5">40.0 Pips TP</div>
           </div>
           <div class="p-3.5 rounded-xl theme-card border theme-border">
             <div class="text-[10px] theme-sub uppercase">3R Profit Target</div>
-            <div id="calcOut3R" class="text-xl font-extrabold text-emerald-400 mt-1">+$6.00</div><div id="calcOut3RPips" class="text-[10px] theme-sub mt-0.5">150 Pips TP</div>
+            <div id="calcOut3R" class="text-xl font-extrabold text-emerald-400 mt-1">+$6.00</div>
+            <div id="calcOut3RPips" class="text-[10px] theme-sub mt-0.5">60.0 Pips TP</div>
           </div>
         </div>
         <div id="calcSummaryLine" class="p-3 rounded-lg theme-card border theme-border text-xs theme-text font-medium">
-          XAUUSD par 0.01 Lot lagao — SL hit hone par sirf $2.00 loss hoga.
+          XAU USD: Risking $2.00 at 0.01 Lots gives you a 20.0 Pips Stop Loss (2R TP: 40.0 Pips).
         </div>
       </div>
     </section>
@@ -2581,30 +2589,23 @@
       const pairName = opt.text;
       const unit = opt.dataset.unit || 'Pips';
       document.getElementById('calcPairSpec').textContent = opt.dataset.spec || '';
-      document.getElementById('calcSlLabel').textContent = `4. Stop Loss (${unit})`;
 
       const bal = parseFloat(document.getElementById('calcBalance').value) || 0;
       const riskVal = parseFloat(document.getElementById('calcRiskPct').value) || 0;
-      const sl = parseFloat(document.getElementById('calcSlPips').value) || 1;
+      const lots = Math.max(0.01, parseFloat(document.getElementById('calcLotSize').value) || 0.01);
       const riskUsd = calcRiskMode === 'pct' ? bal * (riskVal / 100) : riskVal;
-      const lots = riskUsd / (sl * pipVal);
-      const minLotPips = riskUsd / (0.01 * pipVal);
+      const slPips = riskUsd / (lots * pipVal);
 
-      document.getElementById('calcOutLot').textContent = `${lots < 0.01 && lots > 0 ? lots.toFixed(3) : lots.toFixed(2)} Lots`;
+      document.getElementById('calcOutSlPips').textContent = `${slPips.toFixed(1)} ${unit}`;
       document.getElementById('calcOutRisk').textContent = `-${fmtMoney(riskUsd)}`;
       document.getElementById('calcOut2R').textContent = `+${fmtMoney(riskUsd * 2)}`;
       document.getElementById('calcOut3R').textContent = `+${fmtMoney(riskUsd * 3)}`;
-      document.getElementById('calcOut2RPips').textContent = `${(sl * 2).toFixed(0)} ${unit} TP`;
-      document.getElementById('calcOut3RPips').textContent = `${(sl * 3).toFixed(0)} ${unit} TP`;
+      document.getElementById('calcOut2RPips').textContent = `${(slPips * 2).toFixed(1)} ${unit} TP`;
+      document.getElementById('calcOut3RPips').textContent = `${(slPips * 3).toFixed(1)} ${unit} TP`;
       document.getElementById('calcSummaryLine').textContent =
-        `${pairName}: ${Math.max(0.01, lots).toFixed(2)} Lots par ${sl} ${unit} SL = ${fmtMoney(riskUsd)} loss | 0.01 Lot par ${fmtMoney(riskUsd)} = ${minLotPips.toFixed(1)} ${unit} SL.`;
+        `${pairName}: Risking ${fmtMoney(riskUsd)} at ${lots.toFixed(2)} Lots gives you a ${slPips.toFixed(1)} ${unit} Stop Loss (2R TP: ${(slPips * 2).toFixed(1)} ${unit}).`;
     }
-    document.getElementById('calcPair').addEventListener('change', (e) => {
-      const opt = e.target.options[e.target.selectedIndex];
-      if (opt && opt.dataset.sl) document.getElementById('calcSlPips').value = opt.dataset.sl;
-      runRiskCalc();
-    });
-    ['calcBalance', 'calcRiskPct', 'calcSlPips'].forEach(id => {
+    ['calcPair', 'calcBalance', 'calcRiskPct', 'calcLotSize'].forEach(id => {
       document.getElementById(id).addEventListener('input', runRiskCalc);
       document.getElementById(id).addEventListener('change', runRiskCalc);
     });
@@ -2612,7 +2613,7 @@
       calcRiskMode = 'pct';
       document.getElementById('calcModePct').className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-bold';
       document.getElementById('calcModeUsd').className = 'px-2 py-0.5 rounded theme-sub font-bold';
-      document.getElementById('calcRiskLabel').textContent = '3. Kitna Loss (%)';
+      document.getElementById('calcRiskLabel').textContent = '3. Risk (%)';
       document.getElementById('calcPresetRow').classList.remove('hidden');
       document.getElementById('calcRiskPct').value = '1';
       runRiskCalc();
@@ -2621,14 +2622,20 @@
       calcRiskMode = 'usd';
       document.getElementById('calcModeUsd').className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-bold';
       document.getElementById('calcModePct').className = 'px-2 py-0.5 rounded theme-sub font-bold';
-      document.getElementById('calcRiskLabel').textContent = '3. Kitna Loss ($)';
+      document.getElementById('calcRiskLabel').textContent = '3. Risk ($)';
       document.getElementById('calcPresetRow').classList.add('hidden');
-      document.getElementById('calcRiskPct').value = '10';
+      document.getElementById('calcRiskPct').value = '5';
       runRiskCalc();
     });
     document.querySelectorAll('.calc-preset').forEach(btn => {
       btn.addEventListener('click', () => {
         document.getElementById('calcRiskPct').value = btn.dataset.r;
+        runRiskCalc();
+      });
+    });
+    document.querySelectorAll('.lot-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('calcLotSize').value = btn.dataset.l;
         runRiskCalc();
       });
     });
