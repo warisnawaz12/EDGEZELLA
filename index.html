@@ -912,12 +912,13 @@
           <div>
             <label class="block text-[11px] theme-sub mb-1">1. Pair / Instrument Select Karo</label>
             <select id="calcPair" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-semibold">
-              <option value="1" data-unit="Pips" data-sl="50">XAU USD</option>
-              <option value="10" data-unit="Pips" data-sl="10">GBP USD</option>
-              <option value="10" data-unit="Pips" data-sl="10">EUR USD</option>
-              <option value="1" data-unit="Points" data-sl="200">BTC/USDT</option>
-              <option value="1" data-unit="Points" data-sl="30">NASDAQ</option>
+              <option value="10" data-unit="Pips" data-sl="50" data-spec="Exness Gold: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">XAU USD</option>
+              <option value="10" data-unit="Pips" data-sl="10" data-spec="Exness Forex: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">GBP USD</option>
+              <option value="10" data-unit="Pips" data-sl="10" data-spec="Exness Forex: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">EUR USD</option>
+              <option value="1" data-unit="Points" data-sl="200" data-spec="Exness Crypto: 1.00 Lot = $1/point | 0.01 Lot = $0.01/pt">BTC/USDT</option>
+              <option value="1" data-unit="Points" data-sl="30" data-spec="Exness NASDAQ: 1.00 Lot = $1/point | 0.01 Lot = $0.01/pt">NASDAQ</option>
             </select>
+            <div id="calcPairSpec" class="text-[10px] text-indigo-400 mt-1 font-medium">Exness Gold: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip</div>
           </div>
           <div>
             <label class="block text-[11px] theme-sub mb-1">2. Tumhara Balance ($)</label>
@@ -961,11 +962,11 @@
           </div>
           <div class="p-3.5 rounded-xl theme-card border theme-border">
             <div class="text-[10px] theme-sub uppercase">2R Profit Target</div>
-            <div id="calcOut2R" class="text-xl font-extrabold text-emerald-500 mt-1">+$4.00</div>
+            <div id="calcOut2R" class="text-xl font-extrabold text-emerald-500 mt-1">+$4.00</div><div id="calcOut2RPips" class="text-[10px] theme-sub mt-0.5">100 Pips TP</div>
           </div>
           <div class="p-3.5 rounded-xl theme-card border theme-border">
             <div class="text-[10px] theme-sub uppercase">3R Profit Target</div>
-            <div id="calcOut3R" class="text-xl font-extrabold text-emerald-400 mt-1">+$6.00</div>
+            <div id="calcOut3R" class="text-xl font-extrabold text-emerald-400 mt-1">+$6.00</div><div id="calcOut3RPips" class="text-[10px] theme-sub mt-0.5">150 Pips TP</div>
           </div>
         </div>
         <div id="calcSummaryLine" class="p-3 rounded-lg theme-card border theme-border text-xs theme-text font-medium">
@@ -2570,9 +2571,11 @@
     let calcRiskMode = 'pct';
     function runRiskCalc() {
       const pairSel = document.getElementById('calcPair');
+      const opt = pairSel.options[pairSel.selectedIndex];
       const pipVal = parseFloat(pairSel.value) || 10;
-      const pairName = pairSel.options[pairSel.selectedIndex].text;
-      const unit = pairSel.options[pairSel.selectedIndex].dataset.unit || 'Pips';
+      const pairName = opt.text;
+      const unit = opt.dataset.unit || 'Pips';
+      document.getElementById('calcPairSpec').textContent = opt.dataset.spec || '';
       document.getElementById('calcSlLabel').textContent = `4. Stop Loss (${unit})`;
 
       const bal = parseFloat(document.getElementById('calcBalance').value) || 0;
@@ -2580,13 +2583,16 @@
       const sl = parseFloat(document.getElementById('calcSlPips').value) || 1;
       const riskUsd = calcRiskMode === 'pct' ? bal * (riskVal / 100) : riskVal;
       const lots = riskUsd / (sl * pipVal);
+      const minLotPips = riskUsd / (0.01 * pipVal);
 
-      document.getElementById('calcOutLot').textContent = `${lots.toFixed(2)} Lots`;
+      document.getElementById('calcOutLot').textContent = `${lots < 0.01 && lots > 0 ? lots.toFixed(3) : lots.toFixed(2)} Lots`;
       document.getElementById('calcOutRisk').textContent = `-${fmtMoney(riskUsd)}`;
       document.getElementById('calcOut2R').textContent = `+${fmtMoney(riskUsd * 2)}`;
       document.getElementById('calcOut3R').textContent = `+${fmtMoney(riskUsd * 3)}`;
+      document.getElementById('calcOut2RPips').textContent = `${(sl * 2).toFixed(0)} ${unit} TP`;
+      document.getElementById('calcOut3RPips').textContent = `${(sl * 3).toFixed(0)} ${unit} TP`;
       document.getElementById('calcSummaryLine').textContent =
-        `${pairName} par ${lots.toFixed(2)} Lots lagao (${sl} ${unit} SL) — max loss ${fmtMoney(riskUsd)} hoga.`;
+        `${pairName}: ${Math.max(0.01, lots).toFixed(2)} Lots par ${sl} ${unit} SL = ${fmtMoney(riskUsd)} loss | 0.01 Lot par ${fmtMoney(riskUsd)} = ${minLotPips.toFixed(1)} ${unit} SL.`;
     }
     document.getElementById('calcPair').addEventListener('change', (e) => {
       const opt = e.target.options[e.target.selectedIndex];
