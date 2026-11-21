@@ -1870,9 +1870,20 @@
 
     function initSupabase() {
       if (window.supabase && SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20) {
-        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+        });
         sbClient.auth.getSession().then(({ data }) => {
-          if (data && data.session) setLoggedInUser(data.session.user);
+          if (data && data.session && data.session.user) {
+            setLoggedInUser(data.session.user);
+          }
+        });
+        sbClient.auth.onAuthStateChange((_event, session) => {
+          if (session && session.user) {
+            setLoggedInUser(session.user);
+          } else {
+            setLoggedInUser(null);
+          }
         });
       }
     }
@@ -1966,8 +1977,13 @@
       if (res.error) {
         msg.textContent = res.error.message;
       } else {
-        msg.textContent = authMode === 'signup' ? 'Account created! Check email or sign in.' : 'Signed in!';
-        if (res.data && res.data.user) setLoggedInUser(res.data.user);
+        if (res.data && res.data.session && res.data.user) {
+          msg.textContent = 'Signed in & synced!';
+          setLoggedInUser(res.data.user);
+          setTimeout(() => document.getElementById('authModal').classList.add('hidden'), 800);
+        } else {
+          msg.textContent = 'Account created! Agar Supabase mein Confirm Email ON hai toh usay OFF kar ke dobara Sign In karo.';
+        }
       }
     });
 
