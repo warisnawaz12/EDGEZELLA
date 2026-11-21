@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EDGEZELLA PRO — VIP Trading Journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --bg-main: #080A0F;
+      --bg-panel: #0F131C;
+      --bg-card: #141925;
+      --bg-sidebar: #0F131C;
+      --border-col: #1E2536;
+      --text-main: #F3F4F6;
+      --text-sub: #9CA3AF;
+      --text-muted: #6B7280;
+    }
+    html.light {
+      --bg-main: #F3F5F9;
+      --bg-panel: #FFFFFF;
+      --bg-card: #F8FAFC;
+      --bg-sidebar: #141937;
+      --border-col: #E2E8F0;
+      --text-main: #0F172A;
+      --text-sub: #475569;
+      --text-muted: #64748B;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      margin: 0;
+      overflow-x: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .theme-panel { background-color: var(--bg-panel); border-color: var(--border-col); }
+    .theme-card { background-color: var(--bg-card); border-color: var(--border-col); }
+    .theme-sidebar { background-color: var(--bg-sidebar); border-color: var(--border-col); }
+    .theme-border { border-color: var(--border-col); }
+    .theme-text { color: var(--text-main); }
+    .theme-sub { color: var(--text-sub); }
+    .theme-muted { color: var(--text-muted); }
+    .glass-card {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-col);
+      border-radius: 12px;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    .cal-cell {
+      min-height: 76px;
+      transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .cal-cell:hover { transform: translateY(-1px); }
+    .cal-cell-lg { min-height: 105px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-main); }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body class="min-h-screen flex flex-col lg:flex-row">
+
+  <!-- Mobile Top Bar -->
+  <div class="lg:hidden flex items-center justify-between px-4 py-3 theme-sidebar text-white border-b border-slate-800 sticky top-0 z-30">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <i data-lucide="zap" class="w-4 h-4 text-white"></i>
+      </div>
+      <span class="font-bold tracking-tight text-white text-base">EDGEZELLA <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-200 border border-indigo-400/30 font-semibold align-middle">PRO</span></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="mobileThemeBtn" class="p-2 rounded-lg bg-slate-800/80 text-amber-300" title="Toggle Dark/Light">
+        <i data-lucide="sun" class="w-4 h-4"></i>
+      </button>
+      <button id="mobileAddTradeBtn" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-semibold flex items-center gap-1">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
+      </button>
+      <button id="mobileMenuBtn" class="p-2 rounded-lg bg-slate-800/80 text-gray-200">
+        <i data-lucide="menu" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Sidebar (Always sleek dark navy/charcoal like TradeZella Light & Dark) -->
+  <aside id="sidebar" class="hidden lg:flex flex-col w-60 shrink-0 theme-sidebar text-gray-200 border-r border-slate-800/80 min-h-screen p-3.5 justify-between fixed lg:sticky top-0 left-0 z-40 h-screen overflow-y-auto">
+    <div>
+      <!-- Brand -->
+      <div class="flex items-center justify-between mb-4 px-1">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+            <i data-lucide="zap" class="w-4 h-4 text-white"></i>
+          </div>
+          <div>
+            <div class="font-bold tracking-tight text-white text-sm leading-none">EDGEZELLA</div>
+            <span class="text-[10px] text-indigo-400 font-semibold tracking-wider">PRO EDITION</span>
+          </div>
+        </div>
+        <button id="closeSidebarBtn" class="lg:hidden p-1 text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Portfolio Selector -->
+      <div class="mb-3">
+        <select id="portfolioSelect" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-lg px-2.5 py-2 text-xs font-medium text-emerald-400 focus:outline-none focus:border-indigo-500">
+          <option value="Main Portfolio">● Main Portfolio ($25K)</option>
+          <option value="Funded Account">● Funded Account ($100K)</option>
+          <option value="Crypto Futures">● Crypto Futures ($10K)</option>
+        </select>
+      </div>
+
+      <!-- Primary CTA -->
+      <button id="sidebarAddTradeBtn" class="w-full py-2.5 px-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition mb-4">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+        <span>Add Trade</span>
+      </button>
+
+      <!-- Main Navigation -->
+      <nav class="space-y-1" id="navLinks">
+        <button data-tab="dashboard" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Dashboard</span>
+        </button>
+        <button data-tab="calendar" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+          <span>Calendar</span>
+        </button>
+        <button data-tab="dayview" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5">
+          <i data-lucide="calendar-days" class="w-4 h-4"></i>
+          <span>Day View</span>
+        </button>
+        <button data-tab="trades" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5">
+          <i data-lucide="candlestick-chart" class="w-4 h-4"></i>
+          <span>Trade View</span>
+        </button>
+        <button data-tab="notebook" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span>Notebook</span>
+        </button>
+        <button data-tab="reports" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5">
+          <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+          <span>Reports</span>
+        </button>
+        <button data-tab="playbook" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5">
+          <i data-lucide="compass" class="w-4 h-4"></i>
+          <span>Playbook</span>
+        </button>
+
+        <div class="pt-3 pb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">Pro Tools</div>
+
+        <button data-tab="replay" class="nav-btn w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5">
+          <span class="flex items-center gap-2.5">
+            <i data-lucide="play-circle" class="w-4 h-4"></i>
+            <span>Trade Replay</span>
+          </span>
+          <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-300 font-bold">NEW</span>
+        </button>
+        <button data-tab="progress" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5">
+          <i data-lucide="target" class="w-4 h-4"></i>
+          <span>Progress Tracker</span>
+        </button>
+        <button data-tab="insights" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>AI Insights</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Bottom Utilities -->
+    <div class="pt-3 mt-4 border-t border-slate-800 space-y-2">
+      <div class="px-2.5 py-2 rounded-lg bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+        <div>
+          <div class="text-[10px] text-gray-400">Account Equity</div>
+          <div id="sidebarBalance" class="text-sm font-bold text-white">$25,000.00</div>
+        </div>
+        <span class="w-2 h-2 rounded-full bg-emerald-400" title="Live Local Sync"></span>
+      </div>
+      <div class="flex gap-1.5">
+        <button id="exportCsvBtn" class="flex-1 py-1.5 px-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-[11px] font-medium text-gray-300 flex items-center justify-center gap-1 border border-slate-800">
+          <i data-lucide="download" class="w-3 h-3"></i> Export
+        </button>
+        <button id="resetDemoBtn" class="flex-1 py-1.5 px-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-[11px] font-medium text-gray-300 flex items-center justify-center gap-1 border border-slate-800" title="Reset sample data">
+          <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 min-w-0 p-4 md:p-5 space-y-4">
+
+    <!-- Top Action Header (3-dot left + Account pinned top-right corner) -->
+    <header class="space-y-2.5 pb-2.5 border-b theme-border">
+      <div class="flex items-center justify-between gap-3">
+        <!-- Far Left: 3-dot toggle + Page Title -->
+        <div class="flex items-center gap-2.5 min-w-0">
+          <button id="desktopSidebarToggleBtn" class="hidden lg:inline-flex p-1.5 rounded-lg theme-panel border theme-border theme-sub hover:theme-text hover:border-indigo-500 transition shrink-0" title="Toggle Sidebar">
+            <i data-lucide="more-vertical" class="w-4 h-4"></i>
+          </button>
+          <h1 id="pageTitle" class="text-lg md:text-xl font-bold theme-text tracking-tight truncate">Dashboard</h1>
+          <span class="hidden sm:inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full theme-card border theme-border theme-sub shrink-0">
+            <i data-lucide="database" class="w-3 h-3 text-indigo-400"></i> Cloud Sync
+          </span>
+        </div>
+
+        <!-- Top-Right Corner: Quick Actions + Account Profile -->
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="themeToggleBtn" class="px-2.5 py-1.5 rounded-lg theme-panel border theme-border text-xs font-medium theme-text flex items-center gap-1.5 hover:border-indigo-500 transition" title="Switch Dark / Light Theme">
+            <i id="themeIcon" data-lucide="sun" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span id="themeLabel" class="hidden sm:inline">Light</span>
+          </button>
+          <button id="askAiBtn" class="px-2.5 py-1.5 rounded-lg theme-panel border border-indigo-500/40 text-xs font-semibold text-indigo-400 flex items-center gap-1.5 hover:bg-indigo-500/10">
+            <i data-lucide="bot" class="w-3.5 h-3.5"></i> <span class="hidden md:inline">Ask EdgeZella AI</span>
+          </button>
+          <button id="authModalOpenBtn" class="px-2.5 py-1.5 rounded-lg bg-emerald-600/15 border border-emerald-500/40 text-xs font-semibold text-emerald-400 flex items-center gap-1.5 hover:bg-emerald-600/25 transition">
+            <i data-lucide="log-in" class="w-3.5 h-3.5"></i> <span id="authBtnLabel">Sign In</span>
+          </button>
+          <button id="accountProfileBtn" class="flex items-center gap-2 pl-2 pr-3 py-1 rounded-lg theme-panel border theme-border hover:border-indigo-500 transition text-left" title="Edit Account Profile">
+            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              <i data-lucide="user" class="w-3.5 h-3.5"></i>
+            </div>
+            <div class="leading-tight">
+              <div id="headerAccountName" class="text-xs font-bold theme-text">Trader</div>
+              <div id="headerAccountSub" class="text-[10px] text-indigo-400 font-medium">EDGEZELLA PRO</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter & Session Sub-bar -->
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="inline-flex rounded-lg theme-card border theme-border p-0.5">
+            <button id="modeDollarBtn" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white">$</button>
+            <button id="modePercentBtn" class="px-2.5 py-1 rounded-md text-xs font-semibold theme-sub">%</button>
+          </div>
+          <select id="rangeFilter" class="theme-panel border theme-border text-xs theme-text rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
+            <option value="ALL">All Time</option>
+            <option value="MONTH">This Month</option>
+            <option value="WEEK">Last 7 Days</option>
+          </select>
+          <select id="symbolFilter" class="theme-panel border theme-border text-xs theme-text rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
+            <option value="ALL">All Symbols</option>
+          </select>
+          <select id="strategyFilter" class="theme-panel border theme-border text-xs theme-text rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
+            <option value="ALL">All Strategies</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="importCsvTrigger" class="px-2.5 py-1.5 rounded-lg theme-panel border theme-border text-xs font-medium theme-text flex items-center gap-1.5 hover:border-indigo-500">
+            <i data-lucide="upload" class="w-3.5 h-3.5 text-indigo-400"></i> Import CSV
+          </button>
+          <input type="file" id="csvFileInput" accept=".csv" class="hidden" />
+          <button id="startDayBtn" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white flex items-center gap-1.5 shadow-md shadow-blue-600/20">
+            <i data-lucide="rocket" class="w-3.5 h-3.5"></i> Start my day
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- TAB: DASHBOARD -->
+    <section id="tab-dashboard" class="space-y-4">
+      <!-- Top 5 KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+        <!-- Net P&L -->
+        <div class="glass-card p-3.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <span class="text-xs theme-sub font-medium flex items-center gap-1.5"><i data-lucide="wallet" class="w-3.5 h-3.5 text-emerald-400"></i> Net P&amp;L</span>
+            <span id="kpiTradeCountBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 font-semibold">0 trades</span>
+          </div>
+          <div id="kpiNetPnl" class="text-2xl font-bold text-emerald-400 mt-2">$0.00</div>
+          <div id="kpiReturnPct" class="text-[11px] theme-sub mt-1">0.00% return</div>
+        </div>
+
+        <!-- Trade Win % -->
+        <div class="glass-card p-3.5 flex items-center justify-between gap-2">
+          <div>
+            <div class="text-xs theme-sub font-medium flex items-center gap-1.5"><i data-lucide="pie-chart" class="w-3.5 h-3.5 text-indigo-400"></i> Trade Win %</div>
+            <div id="kpiWinRate" class="text-2xl font-bold theme-text mt-2">0%</div>
+            <div id="kpiWinLossCount" class="text-[11px] theme-sub mt-1">0W / 0L</div>
+          </div>
+          <div class="relative w-16 h-16 shrink-0">
+            <canvas id="winRateGauge"></canvas>
+          </div>
+        </div>
+
+        <!-- Avg Win / Loss -->
+        <div class="glass-card p-3.5 flex flex-col justify-between">
+          <div class="text-xs theme-sub font-medium flex items-center gap-1.5"><i data-lucide="scale" class="w-3.5 h-3.5 text-blue-400"></i> Avg win/loss</div>
+          <div id="kpiAvgRatio" class="text-2xl font-bold theme-text mt-1">0.00</div>
+          <div class="mt-2">
+            <div class="w-full h-2 rounded-full theme-card overflow-hidden flex">
+              <div id="avgWinBar" class="bg-emerald-500 h-full" style="width: 60%"></div>
+              <div id="avgLossBar" class="bg-rose-500 h-full" style="width: 40%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] mt-1">
+              <span id="kpiAvgWinText" class="text-emerald-500 font-medium">$0</span>
+              <span id="kpiAvgLossText" class="text-rose-500 font-medium">-$0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profit Factor -->
+        <div class="glass-card p-3.5 flex items-center justify-between gap-2">
+          <div>
+            <div class="text-xs theme-sub font-medium flex items-center gap-1.5"><i data-lucide="percent" class="w-3.5 h-3.5 text-purple-400"></i> Profit factor</div>
+            <div id="kpiProfitFactor" class="text-2xl font-bold theme-text mt-2">0.00</div>
+            <div id="kpiExpectancy" class="text-[11px] theme-sub mt-1">Exp: $0.00</div>
+          </div>
+          <div class="relative w-14 h-14 shrink-0">
+            <canvas id="pfRingChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Current Streak -->
+        <div class="glass-card p-3.5 flex flex-col justify-between">
+          <div class="text-xs theme-sub font-medium flex items-center gap-1.5"><i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400"></i> Current streak</div>
+          <div class="flex items-center gap-4 mt-2">
+            <div>
+              <div class="text-[10px] uppercase tracking-wider theme-muted">Days</div>
+              <div id="kpiDayStreak" class="text-xl font-bold text-emerald-500 flex items-center gap-1">0 <span class="text-xs">🔥</span></div>
+            </div>
+            <div class="h-8 w-px theme-border border-l"></div>
+            <div>
+              <div class="text-[10px] uppercase tracking-wider theme-muted">Trades</div>
+              <div id="kpiTradeStreak" class="text-xl font-bold text-indigo-400">0</div>
+            </div>
+          </div>
+          <div id="kpiMaxStreak" class="text-[11px] theme-sub mt-1">Best win streak: 0</div>
+        </div>
+      </div>
+
+      <!-- Secondary Pro Strip -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="glass-card px-3.5 py-2.5 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] uppercase theme-sub font-semibold">Expectancy</div>
+            <div id="stripExpectancy" class="text-sm font-bold text-emerald-500 mt-0.5">$0.00</div>
+          </div>
+          <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+        </div>
+        <div class="glass-card px-3.5 py-2.5 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] uppercase theme-sub font-semibold">System Quality (SQN)</div>
+            <div id="stripSqn" class="text-sm font-bold text-indigo-400 mt-0.5">0.00</div>
+          </div>
+          <i data-lucide="award" class="w-4 h-4 text-indigo-400"></i>
+        </div>
+        <div class="glass-card px-3.5 py-2.5 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] uppercase theme-sub font-semibold">Max Drawdown</div>
+            <div id="stripDrawdown" class="text-sm font-bold text-rose-500 mt-0.5">0.00%</div>
+          </div>
+          <i data-lucide="shield-alert" class="w-4 h-4 text-rose-400"></i>
+        </div>
+        <div class="glass-card px-3.5 py-2.5 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] uppercase theme-sub font-semibold">Best / Worst Day</div>
+            <div class="text-xs font-bold mt-0.5"><span id="stripBestDay" class="text-emerald-500">$0</span> <span class="theme-muted">/</span> <span id="stripWorstDay" class="text-rose-500">$0</span></div>
+          </div>
+          <i data-lucide="activity" class="w-4 h-4 text-indigo-400"></i>
+        </div>
+      </div>
+
+      <!-- Middle Grid: Left Charts + Right Calendar -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <!-- Left Charts Column -->
+        <div class="xl:col-span-4 space-y-4">
+          <!-- Daily Net Cumulative P&L -->
+          <div class="glass-card p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-xs font-semibold theme-text uppercase tracking-wider flex items-center gap-1.5"><i data-lucide="area-chart" class="w-3.5 h-3.5 text-emerald-400"></i> Daily Net Cumulative P&amp;L</h2>
+              <span class="text-[11px] theme-sub">Equity</span>
+            </div>
+            <div class="relative h-48">
+              <canvas id="equityChart"></canvas>
+            </div>
+          </div>
+
+          <!-- EdgeZella Radar -->
+          <div class="glass-card p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <h2 class="text-xs font-semibold theme-text uppercase tracking-wider flex items-center gap-1.5"><i data-lucide="radar" class="w-3.5 h-3.5 text-indigo-400"></i> EdgeZella Score</h2>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-bold">PRO</span>
+              </div>
+              <span id="edgeScoreValue" class="text-sm font-bold text-indigo-400">0 / 100</span>
+            </div>
+            <div class="relative h-52">
+              <canvas id="radarChart"></canvas>
+            </div>
+            <div class="mt-2">
+              <div class="w-full h-2 rounded-full theme-card overflow-hidden">
+                <div id="edgeScoreBar" class="h-full rounded-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Performance & Risk Summary (WaveScore style) -->
+          <div class="glass-card p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold theme-text uppercase tracking-wider flex items-center gap-1.5"><i data-lucide="gauge" class="w-3.5 h-3.5 text-blue-400"></i> Period Returns &amp; Risk</span>
+              <span id="perfGainBadge" class="text-xs font-bold text-emerald-500">+0.00%</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5 text-center text-[11px]">
+              <div class="p-1.5 rounded-lg theme-card border theme-border"><div class="theme-muted text-[9px]">Daily</div><div id="retDaily" class="font-bold text-emerald-500">+0%</div></div>
+              <div class="p-1.5 rounded-lg theme-card border theme-border"><div class="theme-muted text-[9px]">Weekly</div><div id="retWeekly" class="font-bold text-emerald-500">+0%</div></div>
+              <div class="p-1.5 rounded-lg theme-card border theme-border"><div class="theme-muted text-[9px]">Monthly</div><div id="retMonthly" class="font-bold text-emerald-500">+0%</div></div>
+              <div class="p-1.5 rounded-lg theme-card border theme-border"><div class="theme-muted text-[9px]">Total Trades</div><div id="retTotalTrades" class="font-bold theme-text">0</div></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="p-2 rounded-lg theme-card border theme-border">
+                <div class="text-[10px] theme-sub">Highest Balance</div>
+                <div id="riskHighBal" class="font-bold theme-text mt-0.5">$25,000</div>
+              </div>
+              <div class="p-2 rounded-lg theme-card border theme-border">
+                <div class="text-[10px] theme-sub">Current Balance</div>
+                <div id="riskCurBal" class="font-bold text-emerald-500 mt-0.5">$25,000</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Calendar Column -->
+        <div class="xl:col-span-8 glass-card p-4 flex flex-col">
+          <!-- Calendar Header -->
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2">
+              <button id="prevMonthBtn" class="p-1.5 rounded-lg theme-card hover:border-indigo-500 border theme-border theme-text">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <h2 id="calendarMonthLabel" class="text-base font-bold theme-text min-w-[140px] text-center">Month Year</h2>
+              <button id="nextMonthBtn" class="p-1.5 rounded-lg theme-card hover:border-indigo-500 border theme-border theme-text">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+              <button id="thisMonthBtn" class="ml-1 px-2.5 py-1 rounded-lg theme-card border theme-border text-xs theme-text font-medium hover:border-indigo-500">This Month</button>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <div class="px-3 py-1.5 rounded-lg theme-card border theme-border">
+                <span class="theme-sub">Monthly P&amp;L:</span>
+                <span id="monthlyPnlBadge" class="font-bold text-emerald-500 ml-1">$0.00</span>
+              </div>
+              <div class="px-3 py-1.5 rounded-lg theme-card border theme-border">
+                <span id="monthlyDaysBadge" class="font-bold theme-text">0</span> <span class="theme-sub">days</span>
+              </div>
+              <button data-goto="calendar" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/15 text-indigo-400 font-semibold hover:bg-indigo-500/25 flex items-center gap-1">
+                <i data-lucide="maximize-2" class="w-3 h-3"></i> Full
+              </button>
+            </div>
+          </div>
+
+          <!-- Calendar Grid -->
+          <div class="overflow-x-auto flex-1">
+            <div class="min-w-[640px]">
+              <div class="grid grid-cols-8 gap-1.5 mb-1.5 text-center text-[11px] font-semibold theme-sub uppercase tracking-wider">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                <div class="text-indigo-400">Total</div>
+              </div>
+              <div id="calendarGrid" class="space-y-1.5"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Row: Daily P&L Bar + Recent Trades / Open Positions -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <div class="xl:col-span-5 glass-card p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-semibold theme-text uppercase tracking-wider flex items-center gap-1.5"><i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-indigo-400"></i> Daily Net P&amp;L</h2>
+            <span class="text-[11px] theme-sub">Last 12 Active Days</span>
+          </div>
+          <div class="relative h-56">
+            <canvas id="dailyBarChart"></canvas>
+          </div>
+        </div>
+
+        <div class="xl:col-span-7 glass-card p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <button id="recentTabBtn" class="text-xs font-bold text-indigo-400 border-b-2 border-indigo-500 pb-1">Recent Trades</button>
+              <button id="openPosTabBtn" class="text-xs font-medium theme-sub hover:theme-text pb-1">Long vs Short Split</button>
+            </div>
+            <button data-goto="trades" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">View All →</button>
+          </div>
+          <div id="recentTradesPanel" class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="theme-sub border-b theme-border">
+                  <th class="pb-2 font-medium">Date</th>
+                  <th class="pb-2 font-medium">Symbol</th>
+                  <th class="pb-2 font-medium">Side</th>
+                  <th class="pb-2 font-medium">Setup</th>
+                  <th class="pb-2 font-medium text-right">Net P&amp;L</th>
+                </tr>
+              </thead>
+              <tbody id="recentTradesBody" class="divide-y theme-border"></tbody>
+            </table>
+          </div>
+          <div id="openPosPanel" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: FULL CALENDAR -->
+    <section id="tab-calendar" class="hidden glass-card p-4 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <button id="fullPrevMonthBtn" class="p-2 rounded-lg theme-card border theme-border theme-text"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+          <h2 id="fullCalMonthLabel" class="text-lg font-bold theme-text min-w-[160px] text-center">Month Year</h2>
+          <button id="fullNextMonthBtn" class="p-2 rounded-lg theme-card border theme-border theme-text"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+        </div>
+        <div id="fullCalStats" class="flex flex-wrap items-center gap-2 text-xs"></div>
+      </div>
+      <div class="overflow-x-auto">
+        <div class="min-w-[720px]">
+          <div class="grid grid-cols-8 gap-2 mb-2 text-center text-xs font-semibold theme-sub uppercase">
+            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            <div class="text-indigo-400">Weekly Total</div>
+          </div>
+          <div id="fullCalendarGrid" class="space-y-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: DAY VIEW -->
+    <section id="tab-dayview" class="hidden space-y-4">
+      <div class="glass-card p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <label class="text-xs theme-sub">Select Date:</label>
+          <input type="date" id="dayViewDateInput" class="theme-card border theme-border rounded-lg px-3 py-1.5 text-xs theme-text focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div id="dayViewStats" class="flex items-center gap-4 text-xs"></div>
+      </div>
+      <div class="glass-card p-4">
+        <h3 class="text-sm font-semibold theme-text mb-3">Trades on Selected Day</h3>
+        <div id="dayViewTradesList" class="space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- TAB: TRADE VIEW -->
+    <section id="tab-trades" class="hidden glass-card p-4 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <input id="tradeSearchInput" type="text" placeholder="Search symbol, setup, or notes..." class="theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text w-full sm:w-64 focus:outline-none focus:border-indigo-500" />
+        <div class="text-xs theme-sub" id="tradeTableCount">0 trades</div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="theme-sub border-b theme-border">
+              <th class="pb-2.5 font-medium">Date</th>
+              <th class="pb-2.5 font-medium">Symbol</th>
+              <th class="pb-2.5 font-medium">Side</th>
+              <th class="pb-2.5 font-medium">Entry → Exit</th>
+              <th class="pb-2.5 font-medium">Setup</th>
+              <th class="pb-2.5 font-medium">Notes</th>
+              <th class="pb-2.5 font-medium text-right">P&amp;L</th>
+              <th class="pb-2.5 font-medium text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="allTradesBody" class="divide-y theme-border"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB: NOTEBOOK -->
+    <section id="tab-notebook" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div class="lg:col-span-5 glass-card p-4 space-y-3">
+        <h3 class="text-sm font-semibold theme-text">Add Journal Note</h3>
+        <input id="noteTitle" type="text" placeholder="Session / Market Lesson Title..." class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text focus:outline-none focus:border-indigo-500" />
+        <input id="noteDate" type="date" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text focus:outline-none focus:border-indigo-500" />
+        <select id="noteMood" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text focus:outline-none focus:border-indigo-500">
+          <option value="Disciplined">Mood: Disciplined</option>
+          <option value="Confident">Mood: Confident</option>
+          <option value="FOMO">Mood: FOMO / Impulsive</option>
+          <option value="Revenge">Mood: Revenge Trading</option>
+          <option value="Patient">Mood: Patient</option>
+        </select>
+        <textarea id="noteBody" rows="5" placeholder="What went well? Did you follow your rules?" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text focus:outline-none focus:border-indigo-500"></textarea>
+        <button id="saveNoteBtn" class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold">Save Note</button>
+      </div>
+      <div class="lg:col-span-7 glass-card p-4 space-y-3">
+        <h3 class="text-sm font-semibold theme-text">Saved Journal Notes</h3>
+        <div id="notesList" class="space-y-2.5 max-h-[480px] overflow-y-auto"></div>
+      </div>
+    </section>
+
+    <!-- TAB: REPORTS -->
+    <section id="tab-reports" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="glass-card p-4">
+        <h3 class="text-sm font-semibold theme-text mb-3">Performance by Symbol</h3>
+        <div id="reportBySymbol" class="space-y-2"></div>
+      </div>
+      <div class="glass-card p-4">
+        <h3 class="text-sm font-semibold theme-text mb-3">Performance by Strategy</h3>
+        <div id="reportByStrategy" class="space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- TAB: PLAYBOOK -->
+    <section id="tab-playbook" class="hidden space-y-4">
+      <div class="glass-card p-4 flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-[180px]">
+          <label class="block text-[11px] theme-sub mb-1">Setup Name</label>
+          <input id="playbookName" type="text" placeholder="e.g. London Liquidity Sweep" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+        </div>
+        <div class="flex-[2] min-w-[220px]">
+          <label class="block text-[11px] theme-sub mb-1">Entry Rules</label>
+          <input id="playbookRules" type="text" placeholder="Sweep previous day high/low + MSS + FVG entry" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+        </div>
+        <button id="addPlaybookBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold">Add Setup</button>
+      </div>
+      <div id="playbookGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- TAB: TRADE REPLAY -->
+    <section id="tab-replay" class="hidden glass-card p-4 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-sm font-bold theme-text flex items-center gap-2">Trade Replay Simulator <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400">NEW</span></h3>
+          <p class="text-xs theme-sub">Step through your trade execution bar-by-bar</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="replayTradeSelect" class="theme-card border theme-border rounded-lg px-3 py-1.5 text-xs theme-text"></select>
+          <button id="replayPlayBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white flex items-center gap-1">
+            <i data-lucide="play" class="w-3.5 h-3.5"></i> Play
+          </button>
+          <button id="replayResetBtn" class="px-3 py-1.5 rounded-lg theme-card border theme-border text-xs theme-text">Reset</button>
+        </div>
+      </div>
+      <div class="relative h-64">
+        <canvas id="replayChart"></canvas>
+      </div>
+      <div id="replayInfo" class="text-xs theme-sub flex flex-wrap gap-4"></div>
+    </section>
+
+    <!-- TAB: PROGRESS TRACKER -->
+    <section id="tab-progress" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="glass-card p-4 space-y-3">
+        <h3 class="text-sm font-bold theme-text">Daily Trading Rules Checklist</h3>
+        <div id="rulesChecklist" class="space-y-2"></div>
+      </div>
+      <div class="glass-card p-4 space-y-3">
+        <h3 class="text-sm font-bold theme-text">Consistency Milestones</h3>
+        <div id="milestonesList" class="space-y-2.5 text-xs"></div>
+      </div>
+    </section>
+
+    <!-- TAB: AI INSIGHTS -->
+    <section id="tab-insights" class="hidden space-y-4">
+      <div class="glass-card p-4">
+        <h3 class="text-sm font-bold theme-text mb-1 flex items-center gap-2"><i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i> EdgeZella AI Performance Diagnostics</h3>
+        <p class="text-xs theme-sub mb-4">Automated insights calculated directly from your logged trades</p>
+        <div id="aiInsightsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add Trade Modal -->
+  <div id="addTradeModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="theme-panel border theme-border rounded-xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold theme-text">Log New Trade</h3>
+        <button id="closeModalBtn" class="theme-sub hover:theme-text"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form id="addTradeForm" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] theme-sub mb-1">Date</label>
+            <input type="date" id="tDate" required class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+          </div>
+          <div>
+            <label class="block text-[11px] theme-sub mb-1">Symbol</label>
+            <input type="text" id="tSymbol" placeholder="XAUUSD / BTCUSDT" required class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text uppercase" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] theme-sub mb-1">Side</label>
+            <select id="tSide" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text">
+              <option value="LONG">LONG</option>
+              <option value="SHORT">SHORT</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] theme-sub mb-1">Net P&amp;L ($)</label>
+            <input type="number" step="0.01" id="tPnl" placeholder="250 or -120" required class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] theme-sub mb-1">Entry Price</label>
+            <input type="number" step="any" id="tEntry" placeholder="2640.50" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+          </div>
+          <div>
+            <label class="block text-[11px] theme-sub mb-1">Exit Price</label>
+            <input type="number" step="any" id="tExit" placeholder="2655.00" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] theme-sub mb-1">Strategy / Setup</label>
+          <input type="text" id="tStrategy" placeholder="Liquidity Sweep / Breakout" value="Liquidity Sweep" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+        </div>
+        <div>
+          <label class="block text-[11px] theme-sub mb-1">Notes</label>
+          <input type="text" id="tNotes" placeholder="Clean 1:3 RR execution" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="cancelModalBtn" class="px-4 py-2 rounded-lg theme-card border theme-border text-xs theme-text">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-xs font-semibold text-white">Save Trade</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Ask EdgeZella AI Modal -->
+  <div id="aiModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="theme-panel border border-indigo-500/40 rounded-xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="bot" class="w-5 h-5 text-indigo-400"></i>
+          <h3 class="text-base font-bold theme-text">EdgeZella AI Coach</h3>
+        </div>
+        <button id="closeAiModalBtn" class="theme-sub hover:theme-text"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div id="aiResponseBox" class="p-3 rounded-lg theme-card border theme-border text-xs theme-text leading-relaxed min-h-[90px]"></div>
+      <div class="flex flex-wrap gap-2">
+        <button class="ai-prompt-btn px-2.5 py-1.5 rounded-lg theme-card border theme-border text-[11px] text-indigo-400 font-medium" data-q="edge">Analyze my Edge</button>
+        <button class="ai-prompt-btn px-2.5 py-1.5 rounded-lg theme-card border theme-border text-[11px] text-emerald-500 font-medium" data-q="best">Best Symbol &amp; Setup</button>
+        <button class="ai-prompt-btn px-2.5 py-1.5 rounded-lg theme-card border theme-border text-[11px] text-rose-500 font-medium" data-q="risk">Risk &amp; Drawdown Check</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start My Day Modal -->
+  <div id="startDayModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="theme-panel border border-blue-500/40 rounded-xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="rocket" class="w-5 h-5 text-blue-400"></i>
+          <h3 class="text-base font-bold theme-text">Pre-Session Routine</h3>
+        </div>
+        <button id="closeStartDayBtn" class="theme-sub hover:theme-text"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-2 text-xs theme-text">
+        <label class="flex items-center gap-2.5 p-2.5 rounded-lg theme-card border theme-border cursor-pointer"><input type="checkbox" class="accent-blue-500" /> Marked HTF Key Levels (PDH / PDL / Asia High-Low)</label>
+        <label class="flex items-center gap-2.5 p-2.5 rounded-lg theme-card border theme-border cursor-pointer"><input type="checkbox" class="accent-blue-500" /> Checked Economic Calendar for Red-Folder News</label>
+        <label class="flex items-center gap-2.5 p-2.5 rounded-lg theme-card border theme-border cursor-pointer"><input type="checkbox" class="accent-blue-500" /> Max Daily Loss Limit Set (1.5% / 2 Trades Max)</label>
+      </div>
+      <button id="confirmStartDayBtn" class="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white">I'm Ready to Trade</button>
+    </div>
+  </div>
+
+  <!-- Edit Account Profile Modal -->
+  <div id="profileModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="theme-panel border theme-border rounded-xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold theme-text flex items-center gap-2"><i data-lucide="user-cog" class="w-4 h-4 text-indigo-400"></i> Account Profile</h3>
+        <button id="closeProfileModalBtn" class="theme-sub hover:theme-text"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-[11px] theme-sub mb-1">Account / Trader Name</label>
+          <input id="profileNameInput" type="text" placeholder="e.g. Ali / Vato" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+        </div>
+        <div>
+          <label class="block text-[11px] theme-sub mb-1">Badge / Edition</label>
+          <input id="profileSubInput" type="text" placeholder="EDGEZELLA PRO" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+        </div>
+        <button id="saveProfileBtn" class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white">Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase Auth Modal (Sign In / Sign Up) -->
+  <div id="authModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="theme-panel border theme-border rounded-xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-base font-bold theme-text">EDGEZELLA Cloud Auth</h3>
+        </div>
+        <button id="closeAuthModalBtn" class="theme-sub hover:theme-text"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-1 p-1 rounded-lg theme-card border theme-border text-xs font-semibold">
+        <button id="authTabSignIn" class="py-1.5 rounded-md bg-indigo-600 text-white">Sign In</button>
+        <button id="authTabSignUp" class="py-1.5 rounded-md theme-sub">Sign Up</button>
+      </div>
+
+      <form id="authForm" class="space-y-3">
+        <div>
+          <label class="block text-[11px] theme-sub mb-1">Email</label>
+          <input id="authEmail" type="email" required placeholder="you@example.com" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+        </div>
+        <div>
+          <label class="block text-[11px] theme-sub mb-1">Password</label>
+          <input id="authPassword" type="password" required minlength="6" placeholder="Min 6 characters" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+        </div>
+        <div id="authStatusMsg" class="text-[11px] text-amber-400 hidden"></div>
+        <button id="authSubmitBtn" type="submit" class="w-full py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-xs font-semibold text-white">Sign In</button>
+      </form>
+
+      <div id="authLoggedInBox" class="hidden space-y-3 text-xs">
+        <div class="p-3 rounded-lg theme-card border border-emerald-500/30">
+          <div class="text-emerald-400 font-bold">● Connected to Supabase</div>
+          <div id="authUserEmail" class="theme-sub mt-0.5 break-all"></div>
+        </div>
+        <button id="authSignOutBtn" class="w-full py-2 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-400 font-semibold">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-lg theme-panel border border-indigo-500/40 text-xs theme-text shadow-xl"></div>
+
+  <script>
+    const STORAGE_KEY = 'edgezella_pro_data_v3';
+    const PORTFOLIOS = { 'Main Portfolio': 25000, 'Funded Account': 100000, 'Crypto Futures': 10000 };
+
+    const DEFAULT_TRADES = [];
+
+    const DEFAULT_NOTES = [];
+
+    const DEFAULT_PLAYBOOK = [
+      { id: 'p1', name: 'Liquidity Sweep', rules: 'Sweep PDH/PDL + 5m Market Structure Shift + FVG entry, 1:2.5 min RR.' },
+      { id: 'p2', name: 'FVG Retest', rules: 'HTF bias aligned + displacement candle + 50% FVG limit order.' },
+      { id: 'p3', name: 'Breakout', rules: 'Consolidation break on high volume + retest of broken level.' }
+    ];
+
+    const DEFAULT_RULES = [
+      { id: 'r1', text: 'Risk max 1% per trade', done: true },
+      { id: 'r2', text: 'Wait for candle close confirmation', done: true },
+      { id: 'r3', text: 'Stop trading after 2 consecutive losses', done: true },
+      { id: 'r4', text: 'Journal every trade with screenshot & mood', done: false }
+    ];
+
+    let state = {
+      trades: [], notes: [], playbook: [], rules: [],
+      portfolio: 'Main Portfolio',
+      theme: 'dark',
+      displayMode: '$',
+      rangeFilter: 'ALL',
+      calYear: 2026,
+      calMonth: 10,
+      symbolFilter: 'ALL',
+      strategyFilter: 'ALL',
+      profileName: 'Trader',
+      profileSub: 'EDGEZELLA PRO'
+    };
+
+    const charts = {};
+    let replayTimer = null;
+
+    function getBaseBalance() { return PORTFOLIOS[state.portfolio] || 25000; }
+
+    function applyTheme() {
+      const html = document.documentElement;
+      const icon = document.getElementById('themeIcon');
+      const label = document.getElementById('themeLabel');
+      if (state.theme === 'light') {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        if (icon) icon.setAttribute('data-lucide', 'moon');
+        if (label) label.textContent = 'Dark';
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        if (icon) icon.setAttribute('data-lucide', 'sun');
+        if (label) label.textContent = 'Light';
+      }
+      lucide.createIcons();
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          state.trades = Array.isArray(parsed.trades) ? parsed.trades : [...DEFAULT_TRADES];
+          state.notes = Array.isArray(parsed.notes) ? parsed.notes : [...DEFAULT_NOTES];
+          state.playbook = Array.isArray(parsed.playbook) ? parsed.playbook : [...DEFAULT_PLAYBOOK];
+          state.rules = Array.isArray(parsed.rules) ? parsed.rules : [...DEFAULT_RULES];
+          state.theme = parsed.theme === 'light' ? 'light' : 'dark';
+          if (parsed.profileName) state.profileName = parsed.profileName;
+          if (parsed.profileSub) state.profileSub = parsed.profileSub;
+          return;
+        }
+      } catch (e) {}
+      state.trades = [...DEFAULT_TRADES];
+      state.notes = [...DEFAULT_NOTES];
+      state.playbook = [...DEFAULT_PLAYBOOK];
+      state.rules = [...DEFAULT_RULES];
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          trades: state.trades, notes: state.notes, playbook: state.playbook, rules: state.rules, theme: state.theme, profileName: state.profileName, profileSub: state.profileSub
+        }));
+      } catch (e) {}
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
+    }
+
+    function fmtMoney(n) {
+      const sign = n < 0 ? '-' : '';
+      return sign + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtVal(n) {
+      if (state.displayMode === '%') {
+        const pct = (n / getBaseBalance()) * 100;
+        return (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+      }
+      return fmtMoney(n);
+    }
+
+    function fmtCompact(n) {
+      if (state.displayMode === '%') {
+        const pct = (n / getBaseBalance()) * 100;
+        return (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+      }
+      const abs = Math.abs(n);
+      const sign = n < 0 ? '-' : '+';
+      if (abs >= 1000) return sign + '$' + (abs / 1000).toFixed(2) + 'K';
+      return sign + '$' + abs.toFixed(0);
+    }
+
+    function getFilteredTrades() {
+      let list = state.trades
+        .filter(t => state.symbolFilter === 'ALL' || t.symbol === state.symbolFilter)
+        .filter(t => state.strategyFilter === 'ALL' || t.strategy === state.strategyFilter)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      if (state.rangeFilter === 'MONTH') {
+        const ym = `${state.calYear}-${String(state.calMonth + 1).padStart(2, '0')}`;
+        list = list.filter(t => t.date.startsWith(ym));
+      } else if (state.rangeFilter === 'WEEK') {
+        list = list.slice(-7);
+      }
+      return list;
+    }
+
+    function populateFilters() {
+      const symbols = [...new Set(state.trades.map(t => t.symbol))].sort();
+      const strategies = [...new Set(state.trades.map(t => t.strategy))].sort();
+
+      const symSel = document.getElementById('symbolFilter');
+      const curSym = symSel.value;
+      symSel.innerHTML = '<option value="ALL">All Symbols</option>' + symbols.map(s => `<option value="${s}">${s}</option>`).join('');
+      if (symbols.includes(curSym)) symSel.value = curSym;
+
+      const strSel = document.getElementById('strategyFilter');
+      const curStr = strSel.value;
+      strSel.innerHTML = '<option value="ALL">All Strategies</option>' + strategies.map(s => `<option value="${s}">${s}</option>`).join('');
+      if (strategies.includes(curStr)) strSel.value = curStr;
+    }
+
+    function computeMetrics(trades) {
+      const base = getBaseBalance();
+      const total = trades.length;
+      const wins = trades.filter(t => t.pnl > 0);
+      const losses = trades.filter(t => t.pnl < 0);
+      const netPnl = trades.reduce((s, t) => s + t.pnl, 0);
+      const grossWin = wins.reduce((s, t) => s + t.pnl, 0);
+      const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnl, 0));
+
+      const winRate = total ? (wins.length / total) * 100 : 0;
+      const avgWin = wins.length ? grossWin / wins.length : 0;
+      const avgLoss = losses.length ? grossLoss / losses.length : 0;
+      const avgRatio = avgLoss > 0 ? avgWin / avgLoss : (avgWin > 0 ? avgWin : 0);
+      const profitFactor = grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? 9.99 : 0);
+      const expectancy = total ? netPnl / total : 0;
+
+      let peak = base, cur = base, maxDdPct = 0, highBal = base;
+      for (const t of trades) {
+        cur += t.pnl;
+        if (cur > peak) peak = cur;
+        if (cur > highBal) highBal = cur;
+        const dd = peak > 0 ? ((peak - cur) / peak) * 100 : 0;
+        if (dd > maxDdPct) maxDdPct = dd;
+      }
+
+      const mean = expectancy;
+      const variance = total > 1 ? trades.reduce((s, t) => s + Math.pow(t.pnl - mean, 2), 0) / total : 0;
+      const std = Math.sqrt(variance);
+      const sqn = std > 0 ? (mean / std) * Math.sqrt(total) : 0;
+
+      let curTradeStreak = 0, maxWinStreak = 0, tempStreak = 0;
+      for (const t of trades) {
+        if (t.pnl > 0) { tempStreak++; if (tempStreak > maxWinStreak) maxWinStreak = tempStreak; }
+        else tempStreak = 0;
+      }
+      for (let i = trades.length - 1; i >= 0; i--) {
+        if (trades[i].pnl > 0) curTradeStreak++;
+        else break;
+      }
+
+      const dailyMap = {};
+      for (const t of trades) {
+        if (!dailyMap[t.date]) dailyMap[t.date] = [];
+        dailyMap[t.date].push(t);
+      }
+      const sortedDays = Object.keys(dailyMap).sort();
+      let curDayStreak = 0, bestDay = 0, worstDay = 0;
+      for (const d of sortedDays) {
+        const dp = dailyMap[d].reduce((s, t) => s + t.pnl, 0);
+        if (dp > bestDay) bestDay = dp;
+        if (dp < worstDay) worstDay = dp;
+      }
+      for (let i = sortedDays.length - 1; i >= 0; i--) {
+        if (dailyMap[sortedDays[i]].reduce((s, t) => s + t.pnl, 0) > 0) curDayStreak++;
+        else break;
+      }
+
+      const wrScore = Math.min(100, winRate * 1.3);
+      const pfScore = Math.min(100, profitFactor * 30);
+      const rrScore = Math.min(100, avgRatio * 35);
+      const consScore = sortedDays.length ? Math.min(100, (sortedDays.filter(d => dailyMap[d].reduce((s, t) => s + t.pnl, 0) > 0).length / sortedDays.length) * 100) : 0;
+      const recScore = netPnl > 0 ? Math.min(100, 60 + (netPnl / base) * 100) : 30;
+      const edgeScore = Math.round((wrScore + pfScore + rrScore + consScore + recScore) / 5);
+
+      return {
+        total, wins: wins.length, losses: losses.length, netPnl,
+        winRate, avgWin, avgLoss, avgRatio, profitFactor, expectancy,
+        curTradeStreak, curDayStreak, maxWinStreak, dailyMap, sortedDays,
+        maxDdPct, highBal, sqn, bestDay, worstDay,
+        edgeScore, radarScores: [Math.round(wrScore), Math.round(pfScore), Math.round(rrScore), Math.round(recScore), Math.round(consScore)]
+      };
+    }
+
+    function renderKPIs(m) {
+      const base = getBaseBalance();
+      const totalRetPct = (m.netPnl / base) * 100;
+      document.getElementById('sidebarBalance').textContent = fmtMoney(base + m.netPnl);
+      document.getElementById('kpiTradeCountBadge').textContent = `${m.total} trades`;
+
+      const pnlEl = document.getElementById('kpiNetPnl');
+      pnlEl.textContent = fmtVal(m.netPnl);
+      pnlEl.className = `text-2xl font-bold mt-2 ${m.netPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`;
+      document.getElementById('kpiReturnPct').textContent = `${totalRetPct.toFixed(2)}% account return`;
+
+      document.getElementById('kpiWinRate').textContent = `${m.winRate.toFixed(1)}%`;
+      document.getElementById('kpiWinLossCount').textContent = `${m.wins}W / ${m.losses}L`;
+
+      document.getElementById('kpiAvgRatio').textContent = m.avgRatio.toFixed(2);
+      const totalAvg = m.avgWin + m.avgLoss || 1;
+      document.getElementById('avgWinBar').style.width = `${(m.avgWin / totalAvg) * 100}%`;
+      document.getElementById('avgLossBar').style.width = `${(m.avgLoss / totalAvg) * 100}%`;
+      document.getElementById('kpiAvgWinText').textContent = fmtMoney(m.avgWin);
+      document.getElementById('kpiAvgLossText').textContent = `-${fmtMoney(m.avgLoss)}`;
+
+      document.getElementById('kpiProfitFactor').textContent = m.profitFactor.toFixed(2);
+      document.getElementById('kpiExpectancy').textContent = `Exp: ${fmtMoney(m.expectancy)}`;
+
+      document.getElementById('kpiDayStreak').innerHTML = `${m.curDayStreak} <span class="text-xs">🔥</span>`;
+      document.getElementById('kpiTradeStreak').textContent = m.curTradeStreak;
+      document.getElementById('kpiMaxStreak').textContent = `Best win streak: ${m.maxWinStreak}`;
+
+      document.getElementById('stripExpectancy').textContent = fmtMoney(m.expectancy);
+      document.getElementById('stripSqn').textContent = m.sqn.toFixed(2);
+      document.getElementById('stripDrawdown').textContent = `-${m.maxDdPct.toFixed(2)}%`;
+      document.getElementById('stripBestDay').textContent = fmtCompact(m.bestDay);
+      document.getElementById('stripWorstDay').textContent = fmtCompact(m.worstDay);
+
+      document.getElementById('perfGainBadge').textContent = `${m.netPnl >= 0 ? '+' : ''}${totalRetPct.toFixed(2)}%`;
+      const daysCount = m.sortedDays.length || 1;
+      document.getElementById('retDaily').textContent = `+${(totalRetPct / daysCount).toFixed(2)}%`;
+      document.getElementById('retWeekly').textContent = `+${(totalRetPct / Math.max(1, daysCount / 5)).toFixed(2)}%`;
+      document.getElementById('retMonthly').textContent = `+${totalRetPct.toFixed(2)}%`;
+      document.getElementById('retTotalTrades').textContent = m.total;
+      document.getElementById('riskHighBal').textContent = fmtMoney(m.highBal);
+      document.getElementById('riskCurBal').textContent = fmtMoney(base + m.netPnl);
+
+      document.getElementById('edgeScoreValue').textContent = `${m.edgeScore} / 100`;
+      document.getElementById('edgeScoreBar').style.width = `${m.edgeScore}%`;
+    }
+
+    function destroyChart(key) { if (charts[key]) { charts[key].destroy(); charts[key] = null; } }
+
+    function renderCharts(m) {
+      const isLight = state.theme === 'light';
+      const gridColor = isLight ? '#E2E8F0' : '#1E2536';
+      const tickColor = isLight ? '#64748B' : '#6B7280';
+
+      destroyChart('winRate');
+      charts.winRate = new Chart(document.getElementById('winRateGauge'), {
+        type: 'doughnut',
+        data: { datasets: [{ data: [m.winRate, Math.max(0, 100 - m.winRate)], backgroundColor: ['#10B981', '#EF4444'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '72%', rotation: -90, circumference: 180, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+      });
+
+      destroyChart('pf');
+      const pfPct = Math.min(100, (m.profitFactor / 3) * 100);
+      charts.pf = new Chart(document.getElementById('pfRingChart'), {
+        type: 'doughnut',
+        data: { datasets: [{ data: [pfPct, Math.max(0, 100 - pfPct)], backgroundColor: ['#6366F1', gridColor], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '74%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+      });
+
+      destroyChart('equity');
+      let cum = 0;
+      const eqLabels = m.sortedDays.map(d => d.slice(5));
+      const eqValues = m.sortedDays.map(d => { cum += m.dailyMap[d].reduce((s, t) => s + t.pnl, 0); return cum; });
+      const eqCtx = document.getElementById('equityChart').getContext('2d');
+      const grad = eqCtx.createLinearGradient(0, 0, 0, 190);
+      grad.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+      grad.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+      charts.equity = new Chart(eqCtx, {
+        type: 'line',
+        data: { labels: eqLabels, datasets: [{ data: eqValues, borderColor: '#10B981', backgroundColor: grad, fill: true, tension: 0.35, pointRadius: 2, borderWidth: 2 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } },
+            y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 }, callback: v => '$' + v } }
+          }
+        }
+      });
+
+      destroyChart('radar');
+      charts.radar = new Chart(document.getElementById('radarChart'), {
+        type: 'radar',
+        data: {
+          labels: ['Win %', 'Profit Factor', 'Avg W/L', 'Recovery', 'Consistency'],
+          datasets: [{ data: m.radarScores, backgroundColor: 'rgba(99, 102, 241, 0.25)', borderColor: '#6366F1', borderWidth: 2, pointBackgroundColor: '#6366F1', pointRadius: 3 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: gridColor }, angleLines: { color: gridColor }, pointLabels: { color: tickColor, font: { size: 10 } } } }
+        }
+      });
+
+      destroyChart('dailyBar');
+      const barDays = m.sortedDays.slice(-12);
+      const barVals = barDays.map(d => m.dailyMap[d].reduce((s, t) => s + t.pnl, 0));
+      charts.dailyBar = new Chart(document.getElementById('dailyBarChart'), {
+        type: 'bar',
+        data: { labels: barDays.map(d => d.slice(5)), datasets: [{ data: barVals, backgroundColor: barVals.map(v => v >= 0 ? '#10B981' : '#EF4444'), borderRadius: 4 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } },
+            y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 }, callback: v => '$' + v } }
+          }
+        }
+      });
+    }
+
+    function buildCalendarGrid(m, gridId, labelId, isLarge) {
+      const year = state.calYear;
+      const month = state.calMonth;
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      document.getElementById(labelId).textContent = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const grid = document.getElementById(gridId);
+      grid.innerHTML = '';
+
+      let monthlyPnl = 0, monthlyDays = 0, monthlyTrades = 0, monthlyWins = 0, dayCounter = 1;
+      const totalWeeks = Math.ceil((firstDay + daysInMonth) / 7);
+      const cellSizeCls = isLarge ? 'cal-cell cal-cell-lg' : 'cal-cell';
+
+      for (let w = 0; w < totalWeeks; w++) {
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-8 gap-1.5';
+        let weekPnl = 0, weekDays = 0;
+
+        for (let d = 0; d < 7; d++) {
+          const cellIndex = w * 7 + d;
+          if (cellIndex < firstDay || dayCounter > daysInMonth) {
+            row.innerHTML += `<div class="${cellSizeCls} rounded-lg theme-card opacity-40 border theme-border"></div>`;
+          } else {
+            const mm = String(month + 1).padStart(2, '0');
+            const dd = String(dayCounter).padStart(2, '0');
+            const dateStr = `${year}-${mm}-${dd}`;
+            const dayTrades = m.dailyMap[dateStr] || [];
+            const dayPnl = dayTrades.reduce((s, t) => s + t.pnl, 0);
+            const hasNote = state.notes.some(n => n.date === dateStr);
+
+            if (dayTrades.length > 0) {
+              monthlyPnl += dayPnl;
+              monthlyDays++;
+              monthlyTrades += dayTrades.length;
+              monthlyWins += dayTrades.filter(t => t.pnl > 0).length;
+              weekPnl += dayPnl;
+              weekDays++;
+              const isWin = dayPnl >= 0;
+              const winPct = Math.round((dayTrades.filter(t => t.pnl > 0).length / dayTrades.length) * 100);
+              const bgCls = isWin ? 'bg-emerald-500/15 border-emerald-500/40 hover:border-emerald-400' : 'bg-rose-500/15 border-rose-500/40 hover:border-rose-400';
+              const textCls = isWin ? 'text-emerald-500' : 'text-rose-500';
+
+              row.innerHTML += `
+                <button onclick="openDayDetail('${dateStr}')" class="${cellSizeCls} text-left rounded-lg p-1.5 border ${bgCls} flex flex-col justify-between cursor-pointer">
+                  <div class="flex justify-between items-center w-full">
+                    <span class="text-[10px] font-semibold theme-sub flex items-center gap-1">${dayCounter}${hasNote ? ' 📝' : ''}</span>
+                    <span class="text-[9px] theme-muted">${winPct}%</span>
+                  </div>
+                  <div class="mt-1">
+                    <div class="text-xs font-bold ${textCls} leading-tight">${fmtCompact(dayPnl)}</div>
+                    <div class="text-[9px] theme-sub">${dayTrades.length} trade${dayTrades.length > 1 ? 's' : ''}</div>
+                  </div>
+                </button>`;
+            } else {
+              row.innerHTML += `
+                <button onclick="openDayDetail('${dateStr}')" class="${cellSizeCls} text-left rounded-lg p-1.5 theme-card border theme-border hover:border-indigo-500/50 flex flex-col justify-between">
+                  <span class="text-[10px] theme-muted">${dayCounter}${hasNote ? ' 📝' : ''}</span>
+                </button>`;
+            }
+            dayCounter++;
+          }
+        }
+
+        const wkColor = weekDays === 0 ? 'theme-muted' : (weekPnl >= 0 ? 'text-emerald-500' : 'text-rose-500');
+        row.innerHTML += `
+          <div class="${cellSizeCls} rounded-lg p-1.5 theme-card border theme-border flex flex-col justify-between">
+            <span class="text-[10px] text-indigo-400 font-semibold">Week ${w + 1}</span>
+            <div>
+              <div class="text-xs font-bold ${wkColor}">${weekDays ? fmtCompact(weekPnl) : '$0'}</div>
+              <div class="text-[9px] theme-muted">${weekDays} day${weekDays !== 1 ? 's' : ''}</div>
+            </div>
+          </div>`;
+
+        grid.appendChild(row);
+      }
+
+      return { monthlyPnl, monthlyDays, monthlyTrades, monthlyWins };
+    }
+
+    function renderCalendar(m) {
+      const stats = buildCalendarGrid(m, 'calendarGrid', 'calendarMonthLabel', false);
+      buildCalendarGrid(m, 'fullCalendarGrid', 'fullCalMonthLabel', true);
+
+      const mBadge = document.getElementById('monthlyPnlBadge');
+      mBadge.textContent = fmtVal(stats.monthlyPnl);
+      mBadge.className = `font-bold ml-1 ${stats.monthlyPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`;
+      document.getElementById('monthlyDaysBadge').textContent = stats.monthlyDays;
+
+      const wr = stats.monthlyTrades ? Math.round((stats.monthlyWins / stats.monthlyTrades) * 100) : 0;
+      document.getElementById('fullCalStats').innerHTML = `
+        <span class="px-3 py-1.5 rounded-lg theme-card border theme-border">Trades: <strong class="theme-text">${stats.monthlyTrades}</strong></span>
+        <span class="px-3 py-1.5 rounded-lg theme-card border theme-border">Win Rate: <strong class="text-indigo-400">${wr}%</strong></span>
+        <span class="px-3 py-1.5 rounded-lg theme-card border theme-border">Monthly P&amp;L: <strong class="${stats.monthlyPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtVal(stats.monthlyPnl)}</strong></span>
+      `;
+    }
+
+    function renderRecentTrades(trades) {
+      const tbody = document.getElementById('recentTradesBody');
+      const recent = [...trades].reverse().slice(0, 6);
+      tbody.innerHTML = recent.map(t => `
+        <tr class="hover:opacity-80">
+          <td class="py-2 theme-sub">${t.date}</td>
+          <td class="py-2 font-semibold theme-text">${t.symbol}</td>
+          <td class="py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span></td>
+          <td class="py-2 theme-sub">${t.strategy}</td>
+          <td class="py-2 text-right font-bold ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtVal(t.pnl)}</td>
+        </tr>
+      `).join('');
+
+      const longs = trades.filter(t => t.side === 'LONG');
+      const shorts = trades.filter(t => t.side === 'SHORT');
+      const longPnl = longs.reduce((s, t) => s + t.pnl, 0);
+      const shortPnl = shorts.reduce((s, t) => s + t.pnl, 0);
+      document.getElementById('openPosPanel').innerHTML = `
+        <div class="p-3 rounded-lg theme-card border theme-border">
+          <div class="text-xs font-bold text-emerald-500">LONG Trades (${longs.length})</div>
+          <div class="text-lg font-bold theme-text mt-1">${fmtVal(longPnl)}</div>
+        </div>
+        <div class="p-3 rounded-lg theme-card border theme-border">
+          <div class="text-xs font-bold text-rose-500">SHORT Trades (${shorts.length})</div>
+          <div class="text-lg font-bold theme-text mt-1">${fmtVal(shortPnl)}</div>
+        </div>
+      `;
+    }
+
+    function renderAllTrades(trades) {
+      const q = document.getElementById('tradeSearchInput').value.toLowerCase();
+      const filtered = [...trades].reverse().filter(t =>
+        t.symbol.toLowerCase().includes(q) || t.strategy.toLowerCase().includes(q) || (t.notes || '').toLowerCase().includes(q)
+      );
+      document.getElementById('tradeTableCount').textContent = `${filtered.length} trades`;
+      document.getElementById('allTradesBody').innerHTML = filtered.map(t => `
+        <tr class="hover:opacity-80">
+          <td class="py-2.5 theme-sub">${t.date}</td>
+          <td class="py-2.5 font-semibold theme-text">${t.symbol}</td>
+          <td class="py-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span></td>
+          <td class="py-2.5 theme-sub">${t.entry || '-'} → ${t.exit || '-'}</td>
+          <td class="py-2.5 text-indigo-400">${t.strategy}</td>
+          <td class="py-2.5 theme-sub max-w-[200px] truncate">${t.notes || '-'}</td>
+          <td class="py-2.5 text-right font-bold ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtVal(t.pnl)}</td>
+          <td class="py-2.5 text-right">
+            <button onclick="deleteTrade('${t.id}')" class="theme-muted hover:text-rose-500 p-1" title="Delete trade">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function renderDayView(dateStr) {
+      const input = document.getElementById('dayViewDateInput');
+      if (dateStr) input.value = dateStr;
+      const target = input.value || '2026-11-20';
+      input.value = target;
+
+      const dayTrades = state.trades.filter(t => t.date === target);
+      const dayPnl = dayTrades.reduce((s, t) => s + t.pnl, 0);
+      const wins = dayTrades.filter(t => t.pnl > 0).length;
+
+      document.getElementById('dayViewStats').innerHTML = `
+        <span>Trades: <strong class="theme-text">${dayTrades.length}</strong></span>
+        <span>Wins: <strong class="text-emerald-500">${wins}</strong></span>
+        <span>Net P&L: <strong class="${dayPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtMoney(dayPnl)}</strong></span>
+      `;
+
+      const list = document.getElementById('dayViewTradesList');
+      if (!dayTrades.length) {
+        list.innerHTML = `<div class="text-xs theme-sub py-8 text-center">No trades logged on ${target}. Click "Add Trade" to log one!</div>`;
+        return;
+      }
+      list.innerHTML = dayTrades.map(t => `
+        <div class="p-3 rounded-lg theme-card border theme-border flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <span class="px-2 py-1 rounded text-[11px] font-bold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span>
+            <div>
+              <div class="text-sm font-bold theme-text">${t.symbol} <span class="text-xs font-normal text-indigo-400">• ${t.strategy}</span></div>
+              <div class="text-xs theme-sub">${t.notes || 'No notes'}</div>
+            </div>
+          </div>
+          <div class="text-sm font-bold ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtMoney(t.pnl)}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderNotes() {
+      const container = document.getElementById('notesList');
+      if (!state.notes.length) { container.innerHTML = '<p class="text-xs theme-sub">No notes yet.</p>'; return; }
+      container.innerHTML = [...state.notes].reverse().map(n => `
+        <div class="p-3 rounded-lg theme-card border theme-border space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold theme-text">${n.title}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-400">${n.mood}</span>
+              <span class="text-[10px] theme-sub">${n.date}</span>
+              <button onclick="deleteNote('${n.id}')" class="theme-muted hover:text-rose-500"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+            </div>
+          </div>
+          <p class="text-xs theme-sub leading-relaxed">${n.body}</p>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function renderReports(trades) {
+      const group = (key) => {
+        const map = {};
+        for (const t of trades) {
+          const k = t[key] || 'Other';
+          if (!map[k]) map[k] = { count: 0, wins: 0, pnl: 0 };
+          map[k].count++; if (t.pnl > 0) map[k].wins++; map[k].pnl += t.pnl;
+        }
+        return Object.entries(map).sort((a, b) => b[1].pnl - a[1].pnl);
+      };
+      const renderGroup = (elId, rows) => {
+        document.getElementById(elId).innerHTML = rows.map(([name, d]) => {
+          const wr = Math.round((d.wins / d.count) * 100);
+          return `
+            <div class="p-3 rounded-lg theme-card border theme-border flex items-center justify-between">
+              <div>
+                <div class="text-xs font-bold theme-text">${name}</div>
+                <div class="text-[11px] theme-sub">${d.count} trades • ${wr}% win rate</div>
+              </div>
+              <div class="text-sm font-bold ${d.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtMoney(d.pnl)}</div>
+            </div>`;
+        }).join('');
+      };
+      renderGroup('reportBySymbol', group('symbol'));
+      renderGroup('reportByStrategy', group('strategy'));
+    }
+
+    function renderPlaybook() {
+      document.getElementById('playbookGrid').innerHTML = state.playbook.map(p => `
+        <div class="glass-card p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-indigo-400">${p.name}</h4>
+            <button onclick="deletePlaybook('${p.id}')" class="theme-muted hover:text-rose-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+          </div>
+          <p class="text-xs theme-sub leading-relaxed">${p.rules}</p>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function renderReplaySelect(trades) {
+      const sel = document.getElementById('replayTradeSelect');
+      sel.innerHTML = trades.map(t => `<option value="${t.id}">${t.date} • ${t.symbol} (${t.side}) ${fmtMoney(t.pnl)}</option>`).join('');
+      drawReplay(0);
+    }
+
+    function drawReplay(step) {
+      const id = document.getElementById('replayTradeSelect').value;
+      const t = state.trades.find(x => x.id === id) || state.trades[0];
+      if (!t) return;
+      const entry = t.entry || 100;
+      const exit = t.exit || (t.pnl >= 0 ? entry * 1.01 : entry * 0.99);
+      const diff = exit - entry;
+      const fullSeries = [entry * 0.999, entry, entry + diff * 0.15, entry - diff * 0.1, entry + diff * 0.4, entry + diff * 0.35, entry + diff * 0.7, entry + diff * 0.85, exit];
+      const shown = step > 0 ? fullSeries.slice(0, step) : fullSeries;
+
+      const isLight = state.theme === 'light';
+      const gridColor = isLight ? '#E2E8F0' : '#1E2536';
+      const tickColor = isLight ? '#64748B' : '#6B7280';
+
+      destroyChart('replay');
+      charts.replay = new Chart(document.getElementById('replayChart'), {
+        type: 'line',
+        data: {
+          labels: shown.map((_, i) => `Bar ${i + 1}`),
+          datasets: [{ label: t.symbol, data: shown, borderColor: t.pnl >= 0 ? '#10B981' : '#EF4444', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0.25, pointRadius: 4 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } } }
+        }
+      });
+      document.getElementById('replayInfo').innerHTML = `
+        <span>Symbol: <strong class="theme-text">${t.symbol}</strong></span>
+        <span>Side: <strong class="text-indigo-400">${t.side}</strong></span>
+        <span>Entry: <strong class="theme-text">${entry}</strong></span>
+        <span>Exit: <strong class="theme-text">${exit}</strong></span>
+        <span>Result: <strong class="${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtMoney(t.pnl)}</strong></span>
+      `;
+    }
+
+    function renderProgress() {
+      document.getElementById('rulesChecklist').innerHTML = state.rules.map(r => `
+        <label class="flex items-center gap-2.5 p-2.5 rounded-lg theme-card border theme-border cursor-pointer text-xs">
+          <input type="checkbox" ${r.done ? 'checked' : ''} onchange="toggleRule('${r.id}')" class="accent-indigo-500" />
+          <span class="${r.done ? 'line-through theme-muted' : 'theme-text'}">${r.text}</span>
+        </label>
+      `).join('');
+
+      const doneCount = state.rules.filter(r => r.done).length;
+      const pct = state.rules.length ? Math.round((doneCount / state.rules.length) * 100) : 0;
+      document.getElementById('milestonesList').innerHTML = `
+        <div class="p-3 rounded-lg theme-card border theme-border">
+          <div class="flex justify-between mb-1"><span class="theme-sub">Daily Rule Adherence</span><span class="font-bold text-indigo-400">${pct}%</span></div>
+          <div class="w-full h-2 rounded-full theme-panel"><div class="h-2 rounded-full bg-indigo-500" style="width:${pct}%"></div></div>
+        </div>
+        <div class="p-3 rounded-lg theme-card border theme-border flex justify-between">
+          <span class="theme-sub">Journaled Notes</span>
+          <span class="font-bold text-emerald-500">${state.notes.length} entries</span>
+        </div>
+        <div class="p-3 rounded-lg theme-card border theme-border flex justify-between">
+          <span class="theme-sub">Playbook Setups Defined</span>
+          <span class="font-bold theme-text">${state.playbook.length} setups</span>
+        </div>
+      `;
+    }
+
+    function renderAiInsights(m, trades) {
+      const symMap = {};
+      for (const t of trades) symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl;
+      const bestSym = Object.entries(symMap).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+      const worstSym = Object.entries(symMap).sort((a, b) => a[1] - b[1])[0] || ['N/A', 0];
+
+      document.getElementById('aiInsightsGrid').innerHTML = `
+        <div class="p-3.5 rounded-lg theme-card border border-emerald-500/30 space-y-1">
+          <div class="text-[11px] font-bold text-emerald-500 uppercase">Top Performing Asset</div>
+          <div class="text-base font-bold theme-text">${bestSym[0]} (${fmtMoney(bestSym[1])})</div>
+          <p class="text-xs theme-sub">Focus your A+ size on ${bestSym[0]} where your edge is strongest.</p>
+        </div>
+        <div class="p-3.5 rounded-lg theme-card border border-indigo-500/30 space-y-1">
+          <div class="text-[11px] font-bold text-indigo-400 uppercase">Expectancy &amp; Edge</div>
+          <div class="text-base font-bold theme-text">${fmtMoney(m.expectancy)} / trade</div>
+          <p class="text-xs theme-sub">Profit Factor of ${m.profitFactor.toFixed(2)} with ${m.winRate.toFixed(1)}% win rate.</p>
+        </div>
+        <div class="p-3.5 rounded-lg theme-card border border-rose-500/30 space-y-1">
+          <div class="text-[11px] font-bold text-rose-500 uppercase">Leak to Watch</div>
+          <div class="text-base font-bold theme-text">${worstSym[0]} (${fmtMoney(worstSym[1])})</div>
+          <p class="text-xs theme-sub">Review losing setups on ${worstSym[0]} and tighten entry rules.</p>
+        </div>
+      `;
+    }
+
+    function renderAll() {
+      populateFilters();
+      const trades = getFilteredTrades();
+      const m = computeMetrics(trades);
+      renderKPIs(m);
+      renderCharts(m);
+      renderCalendar(m);
+      renderRecentTrades(trades);
+      renderAllTrades(trades);
+      renderDayView();
+      renderNotes();
+      renderReports(trades);
+      renderPlaybook();
+      renderReplaySelect(trades);
+      renderProgress();
+      renderAiInsights(m, trades);
+    }
+
+    window.openDayDetail = function(dateStr) { switchTab('dayview'); renderDayView(dateStr); };
+    window.deleteTrade = function(id) { state.trades = state.trades.filter(t => t.id !== id); saveState(); renderAll(); showToast('Trade deleted'); };
+    window.deleteNote = function(id) { state.notes = state.notes.filter(n => n.id !== id); saveState(); renderNotes(); renderCalendar(computeMetrics(getFilteredTrades())); showToast('Note deleted'); };
+    window.deletePlaybook = function(id) { state.playbook = state.playbook.filter(p => p.id !== id); saveState(); renderPlaybook(); showToast('Setup removed'); };
+    window.toggleRule = function(id) { const r = state.rules.find(x => x.id === id); if (r) r.done = !r.done; saveState(); renderProgress(); };
+
+    function switchTab(tab) {
+      const titles = {
+        dashboard: 'Dashboard', calendar: 'Trading Calendar', dayview: 'Day View', trades: 'Trade View',
+        notebook: 'Notebook', reports: 'Reports', playbook: 'Playbook',
+        replay: 'Trade Replay', progress: 'Progress Tracker', insights: 'AI Insights'
+      };
+      document.getElementById('pageTitle').textContent = titles[tab] || 'Dashboard';
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const active = btn.dataset.tab === tab;
+        btn.className = active
+          ? 'nav-btn w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+          : 'nav-btn w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5';
+      });
+      if (window.innerWidth < 1024) document.getElementById('sidebar').classList.add('hidden');
+    }
+
+    function openAddModal() {
+      document.getElementById('tDate').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('addTradeModal').classList.remove('hidden');
+    }
+    function closeAddModal() { document.getElementById('addTradeModal').classList.add('hidden'); }
+
+    function toggleTheme() {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      saveState();
+      applyTheme();
+      renderCharts(computeMetrics(getFilteredTrades()));
+      drawReplay(0);
+      showToast(`Switched to ${state.theme === 'light' ? 'Light' : 'Dark'} Mode`);
+    }
+
+    // Listeners
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+    document.querySelectorAll('[data-goto]').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.goto)));
+
+    document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
+    document.getElementById('mobileThemeBtn').addEventListener('click', toggleTheme);
+
+    document.getElementById('recentTabBtn').addEventListener('click', () => {
+      document.getElementById('recentTradesPanel').classList.remove('hidden');
+      document.getElementById('openPosPanel').classList.add('hidden');
+      document.getElementById('recentTabBtn').className = 'text-xs font-bold text-indigo-400 border-b-2 border-indigo-500 pb-1';
+      document.getElementById('openPosTabBtn').className = 'text-xs font-medium theme-sub pb-1';
+    });
+    document.getElementById('openPosTabBtn').addEventListener('click', () => {
+      document.getElementById('recentTradesPanel').classList.add('hidden');
+      document.getElementById('openPosPanel').classList.remove('hidden');
+      document.getElementById('openPosTabBtn').className = 'text-xs font-bold text-indigo-400 border-b-2 border-indigo-500 pb-1';
+      document.getElementById('recentTabBtn').className = 'text-xs font-medium theme-sub pb-1';
+    });
+
+    document.getElementById('sidebarAddTradeBtn').addEventListener('click', openAddModal);
+    document.getElementById('mobileAddTradeBtn').addEventListener('click', openAddModal);
+    document.getElementById('closeModalBtn').addEventListener('click', closeAddModal);
+    document.getElementById('cancelModalBtn').addEventListener('click', closeAddModal);
+
+    document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.remove('hidden');
+      document.getElementById('sidebar').classList.add('flex');
+    });
+    document.getElementById('closeSidebarBtn').addEventListener('click', () => document.getElementById('sidebar').classList.add('hidden'));
+
+    document.getElementById('portfolioSelect').addEventListener('change', (e) => {
+      state.portfolio = e.target.value;
+      renderAll();
+      showToast(`Switched to ${state.portfolio}`);
+    });
+
+    document.getElementById('modeDollarBtn').addEventListener('click', () => {
+      state.displayMode = '$';
+      document.getElementById('modeDollarBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white';
+      document.getElementById('modePercentBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold theme-sub';
+      renderAll();
+    });
+    document.getElementById('modePercentBtn').addEventListener('click', () => {
+      state.displayMode = '%';
+      document.getElementById('modePercentBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white';
+      document.getElementById('modeDollarBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold theme-sub';
+      renderAll();
+    });
+
+    document.getElementById('askAiBtn').addEventListener('click', () => {
+      const m = computeMetrics(getFilteredTrades());
+      document.getElementById('aiResponseBox').textContent = `Your EdgeZella Score is ${m.edgeScore}/100 with a ${m.winRate.toFixed(1)}% win rate and ${m.profitFactor.toFixed(2)} Profit Factor. Pick a quick question below!`;
+      document.getElementById('aiModal').classList.remove('hidden');
+    });
+    document.getElementById('closeAiModalBtn').addEventListener('click', () => document.getElementById('aiModal').classList.add('hidden'));
+    document.querySelectorAll('.ai-prompt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const m = computeMetrics(getFilteredTrades());
+        const q = btn.dataset.q;
+        const box = document.getElementById('aiResponseBox');
+        if (q === 'edge') box.textContent = `Edge Analysis: Net P&L is ${fmtMoney(m.netPnl)} across ${m.total} trades. Expectancy is ${fmtMoney(m.expectancy)}/trade with a ${m.avgRatio.toFixed(2)} Avg Win/Loss ratio.`;
+        else if (q === 'best') box.textContent = `Best Day was ${fmtMoney(m.bestDay)}. Stick to your highest win-rate setups in Playbook and avoid overtrading on choppy days.`;
+        else box.textContent = `Risk Check: Max Balance Drawdown is -${m.maxDdPct.toFixed(2)}%. Keep risk capped at 1% per trade to protect your ${fmtMoney(getBaseBalance() + m.netPnl)} equity.`;
+      });
+    });
+
+    document.getElementById('startDayBtn').addEventListener('click', () => document.getElementById('startDayModal').classList.remove('hidden'));
+    document.getElementById('closeStartDayBtn').addEventListener('click', () => document.getElementById('startDayModal').classList.add('hidden'));
+    document.getElementById('confirmStartDayBtn').addEventListener('click', () => {
+      document.getElementById('startDayModal').classList.add('hidden');
+      showToast('Pre-session routine complete. Trade disciplined!');
+    });
+
+    document.getElementById('addTradeForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newTrade = {
+        id: 't_' + Date.now(),
+        date: document.getElementById('tDate').value,
+        symbol: document.getElementById('tSymbol').value.trim().toUpperCase(),
+        side: document.getElementById('tSide').value,
+        entry: parseFloat(document.getElementById('tEntry').value) || 0,
+        exit: parseFloat(document.getElementById('tExit').value) || 0,
+        pnl: parseFloat(document.getElementById('tPnl').value) || 0,
+        strategy: document.getElementById('tStrategy').value.trim() || 'Discretionary',
+        notes: document.getElementById('tNotes').value.trim()
+      };
+      state.trades.push(newTrade);
+      saveState();
+      closeAddModal();
+      e.target.reset();
+      renderAll();
+      showToast(`Added ${newTrade.symbol} (${fmtMoney(newTrade.pnl)})`);
+    });
+
+    function shiftMonth(delta) {
+      state.calMonth += delta;
+      if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
+      if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+      renderCalendar(computeMetrics(getFilteredTrades()));
+    }
+    document.getElementById('prevMonthBtn').addEventListener('click', () => shiftMonth(-1));
+    document.getElementById('nextMonthBtn').addEventListener('click', () => shiftMonth(1));
+    document.getElementById('fullPrevMonthBtn').addEventListener('click', () => shiftMonth(-1));
+    document.getElementById('fullNextMonthBtn').addEventListener('click', () => shiftMonth(1));
+    document.getElementById('thisMonthBtn').addEventListener('click', () => {
+      state.calYear = 2026; state.calMonth = 10;
+      renderCalendar(computeMetrics(getFilteredTrades()));
+    });
+
+    document.getElementById('rangeFilter').addEventListener('change', (e) => { state.rangeFilter = e.target.value; renderAll(); });
+    document.getElementById('symbolFilter').addEventListener('change', (e) => { state.symbolFilter = e.target.value; renderAll(); });
+    document.getElementById('strategyFilter').addEventListener('change', (e) => { state.strategyFilter = e.target.value; renderAll(); });
+    document.getElementById('tradeSearchInput').addEventListener('input', () => renderAllTrades(getFilteredTrades()));
+    document.getElementById('dayViewDateInput').addEventListener('change', (e) => renderDayView(e.target.value));
+
+    document.getElementById('saveNoteBtn').addEventListener('click', () => {
+      const title = document.getElementById('noteTitle').value.trim();
+      const body = document.getElementById('noteBody').value.trim();
+      const date = document.getElementById('noteDate').value || new Date().toISOString().slice(0, 10);
+      const mood = document.getElementById('noteMood').value;
+      if (!title || !body) { showToast('Please enter title & note'); return; }
+      state.notes.push({ id: 'n_' + Date.now(), title, body, date, mood });
+      saveState();
+      document.getElementById('noteTitle').value = '';
+      document.getElementById('noteBody').value = '';
+      renderNotes();
+      renderCalendar(computeMetrics(getFilteredTrades()));
+      showToast('Journal note saved');
+    });
+
+    document.getElementById('addPlaybookBtn').addEventListener('click', () => {
+      const name = document.getElementById('playbookName').value.trim();
+      const rules = document.getElementById('playbookRules').value.trim();
+      if (!name || !rules) { showToast('Enter setup name & rules'); return; }
+      state.playbook.push({ id: 'p_' + Date.now(), name, rules });
+      saveState();
+      document.getElementById('playbookName').value = '';
+      document.getElementById('playbookRules').value = '';
+      renderPlaybook();
+      showToast('Setup added to Playbook');
+    });
+
+    document.getElementById('replayTradeSelect').addEventListener('change', () => drawReplay(0));
+    document.getElementById('replayResetBtn').addEventListener('click', () => { clearInterval(replayTimer); drawReplay(0); });
+    document.getElementById('replayPlayBtn').addEventListener('click', () => {
+      clearInterval(replayTimer);
+      let step = 1;
+      drawReplay(step);
+      replayTimer = setInterval(() => { step++; drawReplay(step); if (step >= 9) clearInterval(replayTimer); }, 450);
+    });
+
+    document.getElementById('exportCsvBtn').addEventListener('click', () => {
+      const header = 'date,symbol,side,entry,exit,pnl,strategy,notes\n';
+      const rows = state.trades.map(t => `${t.date},${t.symbol},${t.side},${t.entry},${t.exit},${t.pnl},"${(t.strategy||'').replace(/"/g,'""')}","${(t.notes||'').replace(/"/g,'""')}"`).join('\n');
+      const blob = new Blob([header + rows], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'edgezella-pro-trades.csv'; a.click();
+      URL.revokeObjectURL(url);
+      showToast('CSV exported!');
+    });
+
+    document.getElementById('importCsvTrigger').addEventListener('click', () => document.getElementById('csvFileInput').click());
+    document.getElementById('csvFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const lines = ev.target.result.split(/\r?\n/).slice(1).filter(Boolean);
+        let added = 0;
+        for (const line of lines) {
+          const cols = line.split(',');
+          if (cols.length >= 6) {
+            state.trades.push({
+              id: 'csv_' + Date.now() + '_' + added,
+              date: cols[0].trim(), symbol: cols[1].trim().toUpperCase(),
+              side: cols[2].trim().toUpperCase() === 'SHORT' ? 'SHORT' : 'LONG',
+              entry: parseFloat(cols[3]) || 0, exit: parseFloat(cols[4]) || 0, pnl: parseFloat(cols[5]) || 0,
+              strategy: (cols[6] || 'Imported').replace(/"/g, '').trim(),
+              notes: (cols[7] || '').replace(/"/g, '').trim()
+            });
+            added++;
+          }
+        }
+        saveState();
+        renderAll();
+        showToast(`Imported ${added} trades!`);
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById('resetDemoBtn').addEventListener('click', () => {
+      state.trades = [...DEFAULT_TRADES];
+      state.notes = [...DEFAULT_NOTES];
+      state.playbook = [...DEFAULT_PLAYBOOK];
+      state.rules = [...DEFAULT_RULES];
+      saveState();
+      renderAll();
+      showToast('Sample data restored');
+    });
+
+    document.getElementById('desktopSidebarToggleBtn').addEventListener('click', () => {
+      const sb = document.getElementById('sidebar');
+      sb.classList.toggle('lg:flex');
+      sb.classList.toggle('lg:hidden');
+    });
+
+    document.getElementById('accountProfileBtn').addEventListener('click', () => {
+      document.getElementById('profileNameInput').value = state.profileName;
+      document.getElementById('profileSubInput').value = state.profileSub;
+      document.getElementById('profileModal').classList.remove('hidden');
+    });
+    document.getElementById('closeProfileModalBtn').addEventListener('click', () => document.getElementById('profileModal').classList.add('hidden'));
+    document.getElementById('saveProfileBtn').addEventListener('click', () => {
+      const n = document.getElementById('profileNameInput').value.trim() || 'Trader';
+      const sub = document.getElementById('profileSubInput').value.trim() || 'EDGEZELLA PRO';
+      state.profileName = n;
+      state.profileSub = sub;
+      document.getElementById('headerAccountName').textContent = n;
+      document.getElementById('headerAccountSub').textContent = sub;
+      saveState();
+      document.getElementById('profileModal').classList.add('hidden');
+      showToast('Account profile updated!');
+    });
+
+    loadState();
+    document.getElementById('headerAccountName').textContent = state.profileName;
+    document.getElementById('headerAccountSub').textContent = state.profileSub;
+    applyTheme();
+    document.getElementById('noteDate').value = '2026-11-21';
+    renderAll();
+    lucide.createIcons();
+  </script>
+  <script>
+    // === SUPABASE CONFIG (Paste your URL & Anon/Publishable Key here) ===
+    const SUPABASE_URL = 'https://pamiwnbmkwkpcklyavqs.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_DihJcQUCnQVI13cyEsNDHQ_-jy9mVUL';
+
+    let sbClient = null;
+    let currentUser = null;
+    let authMode = 'signin';
+
+    function initSupabase() {
+      if (window.supabase && SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20) {
+        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        sbClient.auth.getSession().then(({ data }) => {
+          if (data && data.session) setLoggedInUser(data.session.user);
+        });
+      }
+    }
+
+    async function setLoggedInUser(user) {
+      currentUser = user;
+      if (user) {
+        document.getElementById('authBtnLabel').textContent = 'Synced';
+        document.getElementById('headerAccountName').textContent = user.email.split('@')[0];
+        document.getElementById('authForm').classList.add('hidden');
+        document.getElementById('authLoggedInBox').classList.remove('hidden');
+        document.getElementById('authUserEmail').textContent = user.email;
+        await pullFromSupabase();
+      } else {
+        document.getElementById('authBtnLabel').textContent = 'Sign In';
+        document.getElementById('authForm').classList.remove('hidden');
+        document.getElementById('authLoggedInBox').classList.add('hidden');
+      }
+    }
+
+    async function pullFromSupabase() {
+      if (!sbClient || !currentUser) return;
+      try {
+        const [tRes, nRes, pRes] = await Promise.all([
+          sbClient.from('trades').select('*').order('date', { ascending: true }),
+          sbClient.from('notes').select('*').order('date', { ascending: true }),
+          sbClient.from('playbook').select('*')
+        ]);
+        if (tRes.data) state.trades = tRes.data.map(x => ({ ...x, pnl: Number(x.pnl), entry: Number(x.entry), exit: Number(x.exit) }));
+        if (nRes.data) state.notes = nRes.data;
+        if (pRes.data) state.playbook = pRes.data;
+        saveState();
+        renderAll();
+        showToast('Cloud trades synced!');
+      } catch (e) {}
+    }
+
+    async function syncInsert(table, row) {
+      if (!sbClient || !currentUser) return;
+      try {
+        await sbClient.from(table).insert([{ ...row, user_id: currentUser.id }]);
+      } catch (e) {}
+    }
+
+    // Hook existing Add Trade form to also push to Supabase
+    const origForm = document.getElementById('addTradeForm');
+    origForm.addEventListener('submit', () => {
+      if (sbClient && currentUser && state.trades.length) {
+        const last = state.trades[state.trades.length - 1];
+        syncInsert('trades', {
+          date: last.date, symbol: last.symbol, side: last.side,
+          entry: last.entry, exit: last.exit, pnl: last.pnl,
+          strategy: last.strategy, notes: last.notes
+        });
+      }
+    });
+
+    document.getElementById('authModalOpenBtn').addEventListener('click', () => {
+      document.getElementById('authModal').classList.remove('hidden');
+    });
+    document.getElementById('closeAuthModalBtn').addEventListener('click', () => {
+      document.getElementById('authModal').classList.add('hidden');
+    });
+    document.getElementById('authTabSignIn').addEventListener('click', () => {
+      authMode = 'signin';
+      document.getElementById('authTabSignIn').className = 'py-1.5 rounded-md bg-indigo-600 text-white';
+      document.getElementById('authTabSignUp').className = 'py-1.5 rounded-md theme-sub';
+      document.getElementById('authSubmitBtn').textContent = 'Sign In';
+    });
+    document.getElementById('authTabSignUp').addEventListener('click', () => {
+      authMode = 'signup';
+      document.getElementById('authTabSignUp').className = 'py-1.5 rounded-md bg-indigo-600 text-white';
+      document.getElementById('authTabSignIn').className = 'py-1.5 rounded-md theme-sub';
+      document.getElementById('authSubmitBtn').textContent = 'Create Account';
+    });
+
+    document.getElementById('authForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('authStatusMsg');
+      msg.classList.remove('hidden');
+      if (!sbClient) {
+        msg.textContent = 'Supabase URL & Key abhi configure nahi hain. Keys paste karne ke baad Sign In live ho jayega!';
+        return;
+      }
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      msg.textContent = 'Connecting...';
+      const res = authMode === 'signup'
+        ? await sbClient.auth.signUp({ email, password })
+        : await sbClient.auth.signInWithPassword({ email, password });
+      if (res.error) {
+        msg.textContent = res.error.message;
+      } else {
+        msg.textContent = authMode === 'signup' ? 'Account created! Check email or sign in.' : 'Signed in!';
+        if (res.data && res.data.user) setLoggedInUser(res.data.user);
+      }
+    });
+
+    document.getElementById('authSignOutBtn').addEventListener('click', async () => {
+      if (sbClient) await sbClient.auth.signOut();
+      setLoggedInUser(null);
+      showToast('Signed out');
+    });
+
+    // Hook saveNoteBtn & addPlaybookBtn to Supabase
+    document.getElementById('saveNoteBtn').addEventListener('click', () => {
+      if (sbClient && currentUser && state.notes.length) {
+        const last = state.notes[state.notes.length - 1];
+        syncInsert('notes', { date: last.date, title: last.title, mood: last.mood, body: last.body });
+      }
+    });
+    document.getElementById('addPlaybookBtn').addEventListener('click', () => {
+      if (sbClient && currentUser && state.playbook.length) {
+        const last = state.playbook[state.playbook.length - 1];
+        syncInsert('playbook', { name: last.name, rules: last.rules });
+      }
+    });
+
+    const _origDeleteTrade = window.deleteTrade;
+    window.deleteTrade = async function(id) {
+      _origDeleteTrade(id);
+      if (sbClient && currentUser && id && !String(id).startsWith('t_')) {
+        try { await sbClient.from('trades').delete().eq('id', id); } catch (e) {}
+      }
+    };
+    const _origDeleteNote = window.deleteNote;
+    window.deleteNote = async function(id) {
+      _origDeleteNote(id);
+      if (sbClient && currentUser && id && !String(id).startsWith('n_')) {
+        try { await sbClient.from('notes').delete().eq('id', id); } catch (e) {}
+      }
+    };
+    const _origDeletePlaybook = window.deletePlaybook;
+    window.deletePlaybook = async function(id) {
+      _origDeletePlaybook(id);
+      if (sbClient && currentUser && id && !String(id).startsWith('p_')) {
+        try { await sbClient.from('playbook').delete().eq('id', id); } catch (e) {}
+      }
+    };
+
+    initSupabase();
+  </script>
+</body>
+</html>
