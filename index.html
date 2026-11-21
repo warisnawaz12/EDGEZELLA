@@ -35,11 +35,35 @@
       --bg-main: #F3F5F9;
       --bg-panel: #FFFFFF;
       --bg-card: #F8FAFC;
-      --bg-sidebar: #141937;
+      --bg-sidebar: #FFFFFF;
       --border-col: #E2E8F0;
       --text-main: #0F172A;
-      --text-sub: #475569;
+      --text-sub: #334155;
       --text-muted: #64748B;
+    }
+    html.light #sidebar {
+      background-color: #FFFFFF !important;
+      color: #0F172A !important;
+      border-color: #E2E8F0 !important;
+    }
+    html.light #sidebar .text-white,
+    html.light #sidebar .text-gray-200,
+    html.light #sidebar .text-gray-300,
+    html.light #sidebar .text-gray-400 {
+      color: #0F172A !important;
+    }
+    html.light #sidebar .nav-btn:hover {
+      background-color: #F1F5F9 !important;
+      color: #0F172A !important;
+    }
+    html.light #sidebar .bg-slate-900\/80,
+    html.light #sidebar .bg-slate-900\/90 {
+      background-color: #F8FAFC !important;
+      border-color: #E2E8F0 !important;
+      color: #0F172A !important;
+    }
+    html.light #sidebar .border-slate-800 {
+      border-color: #E2E8F0 !important;
     }
     * { box-sizing: border-box; }
     body {
@@ -117,13 +141,13 @@
         </button>
       </div>
 
-      <!-- Portfolio Selector -->
-      <div class="mb-3">
-        <select id="portfolioSelect" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-lg px-2.5 py-2 text-xs font-medium text-emerald-400 focus:outline-none focus:border-indigo-500">
-          <option value="Main Portfolio">● Main Portfolio ($25K)</option>
-          <option value="Funded Account">● Funded Account ($100K)</option>
-          <option value="Crypto Futures">● Crypto Futures ($10K)</option>
-        </select>
+      <!-- Custom Starting Balance -->
+      <div class="mb-3 p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
+        <label class="block text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Starting Balance ($)</label>
+        <div class="flex items-center gap-1.5">
+          <input id="startingBalanceInput" type="number" step="any" min="0" value="200" class="w-full bg-transparent border border-slate-700 rounded-md px-2 py-1 text-xs font-bold text-emerald-400 focus:outline-none focus:border-indigo-500" />
+          <button id="saveBalanceBtn" type="button" class="px-2.5 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-[11px] font-semibold text-white shrink-0">Set</button>
+        </div>
       </div>
 
       <!-- Primary CTA -->
@@ -567,7 +591,7 @@
               <th class="pb-2.5 font-medium">Date</th>
               <th class="pb-2.5 font-medium">Symbol</th>
               <th class="pb-2.5 font-medium">Side</th>
-              <th class="pb-2.5 font-medium">Entry → Exit</th>
+              <th class="pb-2.5 font-medium">Outcome / R</th>
               <th class="pb-2.5 font-medium">Setup</th>
               <th class="pb-2.5 font-medium">Notes</th>
               <th class="pb-2.5 font-medium text-right">P&amp;L</th>
@@ -705,12 +729,16 @@
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-[11px] theme-sub mb-1">Entry Price</label>
-            <input type="number" step="any" id="tEntry" placeholder="2640.50" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+            <label class="block text-[11px] theme-sub mb-1">Outcome</label>
+            <select id="tOutcome" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-semibold">
+              <option value="TP">TP (Take Profit)</option>
+              <option value="SL">SL (Stop Loss)</option>
+              <option value="BE">BE (Breakeven)</option>
+            </select>
           </div>
           <div>
-            <label class="block text-[11px] theme-sub mb-1">Exit Price</label>
-            <input type="number" step="any" id="tExit" placeholder="2655.00" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
+            <label class="block text-[11px] theme-sub mb-1">R-Multiple</label>
+            <input type="text" id="tRMultiple" value="+2R" placeholder="e.g. +2.5R" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-bold" />
           </div>
         </div>
         <div>
@@ -834,7 +862,7 @@
 
   <script>
     const STORAGE_KEY = 'edgezella_pro_data_v3';
-    const PORTFOLIOS = { 'Main Portfolio': 25000, 'Funded Account': 100000, 'Crypto Futures': 10000 };
+    
 
     const DEFAULT_TRADES = [];
 
@@ -855,7 +883,7 @@
 
     let state = {
       trades: [], notes: [], playbook: [], rules: [],
-      portfolio: 'Main Portfolio',
+      startingBalance: 200,
       theme: 'dark',
       displayMode: '$',
       rangeFilter: 'ALL',
@@ -870,7 +898,7 @@
     const charts = {};
     let replayTimer = null;
 
-    function getBaseBalance() { return PORTFOLIOS[state.portfolio] || 25000; }
+    function getBaseBalance() { return Number(state.startingBalance) || 0; }
 
     function applyTheme() {
       const html = document.documentElement;
@@ -902,6 +930,7 @@
           state.theme = parsed.theme === 'light' ? 'light' : 'dark';
           if (parsed.profileName) state.profileName = parsed.profileName;
           if (parsed.profileSub) state.profileSub = parsed.profileSub;
+          if (parsed.startingBalance !== undefined) state.startingBalance = Number(parsed.startingBalance);
           return;
         }
       } catch (e) {}
@@ -914,7 +943,7 @@
     function saveState() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          trades: state.trades, notes: state.notes, playbook: state.playbook, rules: state.rules, theme: state.theme, profileName: state.profileName, profileSub: state.profileSub
+          trades: state.trades, notes: state.notes, playbook: state.playbook, rules: state.rules, theme: state.theme, profileName: state.profileName, profileSub: state.profileSub, startingBalance: state.startingBalance
         }));
       } catch (e) {}
     }
@@ -1314,7 +1343,7 @@
           <td class="py-2.5 theme-sub">${t.date}</td>
           <td class="py-2.5 font-semibold theme-text">${t.symbol}</td>
           <td class="py-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span></td>
-          <td class="py-2.5 theme-sub">${t.entry || '-'} → ${t.exit || '-'}</td>
+          <td class="py-2.5 font-semibold ${t.outcome === 'SL' ? 'text-rose-500' : (t.outcome === 'BE' ? 'text-amber-400' : 'text-emerald-500')}">${t.outcome || (t.pnl > 0 ? 'TP' : (t.pnl < 0 ? 'SL' : 'BE'))} (${t.rMultiple || (t.pnl > 0 ? '+1R' : (t.pnl < 0 ? '-1R' : '0R'))})</td>
           <td class="py-2.5 text-indigo-400">${t.strategy}</td>
           <td class="py-2.5 theme-sub max-w-[200px] truncate">${t.notes || '-'}</td>
           <td class="py-2.5 text-right font-bold ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtVal(t.pnl)}</td>
@@ -1603,10 +1632,31 @@
     });
     document.getElementById('closeSidebarBtn').addEventListener('click', () => document.getElementById('sidebar').classList.add('hidden'));
 
-    document.getElementById('portfolioSelect').addEventListener('change', (e) => {
-      state.portfolio = e.target.value;
+    document.getElementById('saveBalanceBtn').addEventListener('click', () => {
+      const val = parseFloat(document.getElementById('startingBalanceInput').value);
+      state.startingBalance = isNaN(val) || val < 0 ? 0 : val;
+      saveState();
       renderAll();
-      showToast(`Switched to ${state.portfolio}`);
+      showToast(`Starting balance set to ${fmtMoney(state.startingBalance)}`);
+    });
+
+    const tOutcomeEl = document.getElementById('tOutcome');
+    const tREl = document.getElementById('tRMultiple');
+    const tPnlEl = document.getElementById('tPnl');
+    tOutcomeEl.addEventListener('change', () => {
+      if (tOutcomeEl.value === 'SL') {
+        tREl.value = '-1R';
+        tREl.readOnly = true;
+        if (parseFloat(tPnlEl.value) > 0) tPnlEl.value = -Math.abs(parseFloat(tPnlEl.value));
+      } else if (tOutcomeEl.value === 'BE') {
+        tREl.value = '0R';
+        tREl.readOnly = true;
+        tPnlEl.value = '0';
+      } else {
+        tREl.readOnly = false;
+        if (tREl.value === '-1R' || tREl.value === '0R') tREl.value = '+2R';
+        if (parseFloat(tPnlEl.value) < 0) tPnlEl.value = Math.abs(parseFloat(tPnlEl.value));
+      }
     });
 
     document.getElementById('modeDollarBtn').addEventListener('click', () => {
@@ -1653,8 +1703,10 @@
         date: document.getElementById('tDate').value,
         symbol: document.getElementById('tSymbol').value.trim().toUpperCase(),
         side: document.getElementById('tSide').value,
-        entry: parseFloat(document.getElementById('tEntry').value) || 0,
-        exit: parseFloat(document.getElementById('tExit').value) || 0,
+        outcome: document.getElementById('tOutcome').value,
+        rMultiple: document.getElementById('tRMultiple').value.trim() || '0R',
+        entry: 0,
+        exit: 0,
         pnl: parseFloat(document.getElementById('tPnl').value) || 0,
         strategy: document.getElementById('tStrategy').value.trim() || 'Discretionary',
         notes: document.getElementById('tNotes').value.trim()
@@ -1799,6 +1851,7 @@
     });
 
     loadState();
+    document.getElementById('startingBalanceInput').value = state.startingBalance;
     document.getElementById('headerAccountName').textContent = state.profileName;
     document.getElementById('headerAccountSub').textContent = state.profileSub;
     applyTheme();
