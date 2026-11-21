@@ -910,51 +910,48 @@
     <section id="tab-calculator" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="glass-card p-5 space-y-4">
         <div>
-          <h3 class="text-base font-bold theme-text flex items-center gap-2"><i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i> Risk &amp; Pip Calculator</h3>
-          <p class="text-xs theme-sub mt-0.5">Select your pair, balance, and risk — SL &amp; TP pips calculate automatically</p>
+          <h3 class="text-base font-bold theme-text flex items-center gap-2"><i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i> Risk &amp; Lot Calculator</h3>
+          <p class="text-xs theme-sub mt-0.5">Select your pair, balance, and risk — lot size &amp; pips calculate automatically</p>
         </div>
-        <div class="space-y-3">
+        <div class="space-y-3.5">
           <div>
             <label class="block text-[11px] theme-sub mb-1">1. Select Pair / Instrument</label>
             <select id="calcPair" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-semibold">
-              <option value="10" data-unit="Pips" data-spec="Exness Gold: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">XAU USD</option>
-              <option value="10" data-unit="Pips" data-spec="Exness Forex: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">GBP USD</option>
-              <option value="10" data-unit="Pips" data-spec="Exness Forex: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip">EUR USD</option>
-              <option value="1" data-unit="Points" data-spec="Exness Crypto: 1.00 Lot = $1/point | 0.01 Lot = $0.01/pt">BTC/USDT</option>
-              <option value="1" data-unit="Points" data-spec="Exness NASDAQ: 1.00 Lot = $1/point | 0.01 Lot = $0.01/pt">NASDAQ</option>
+              <option value="10" data-unit="Pips" data-stdsl="50" data-spec="Exness Gold: 0.01 Lot = $0.10/pip | 1.00 Lot = $10/pip">XAU USD</option>
+              <option value="10" data-unit="Pips" data-stdsl="10" data-spec="Exness Forex: 0.01 Lot = $0.10/pip | 1.00 Lot = $10/pip">GBP USD</option>
+              <option value="10" data-unit="Pips" data-stdsl="10" data-spec="Exness Forex: 0.01 Lot = $0.10/pip | 1.00 Lot = $10/pip">EUR USD</option>
+              <option value="1" data-unit="Points" data-stdsl="200" data-spec="Exness Crypto: 0.01 Lot = $0.01/pt | 1.00 Lot = $1/pt">BTC/USDT</option>
+              <option value="1" data-unit="Points" data-stdsl="30" data-spec="Exness NASDAQ: 0.01 Lot = $0.01/pt | 1.00 Lot = $1/pt">NASDAQ</option>
             </select>
-            <div id="calcPairSpec" class="text-[10px] text-indigo-400 mt-1 font-medium">Exness Gold: 1.00 Lot = $10/pip | 0.01 Lot = $0.10/pip</div>
+            <div id="calcPairSpec" class="text-[10px] text-indigo-400 mt-1 font-medium">Exness Gold: 0.01 Lot = $0.10/pip | 1.00 Lot = $10/pip</div>
           </div>
+
           <div>
             <label class="block text-[11px] theme-sub mb-1">2. Account Balance ($)</label>
             <input id="calcBalance" type="number" step="any" value="200" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-bold" />
+            <div class="flex flex-wrap gap-1.5 mt-1.5">
+              <button type="button" class="bal-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-b="100">$100</button>
+              <button type="button" class="bal-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-b="200">$200</button>
+              <button type="button" class="bal-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-b="300">$300</button>
+              <button type="button" class="bal-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-b="500">$500</button>
+              <button type="button" class="bal-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-b="1000">$1,000</button>
+            </div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <label id="calcRiskLabel" class="text-[11px] theme-sub">3. Risk (%)</label>
-                <div class="inline-flex rounded-md theme-card border theme-border p-0.5 text-[10px]">
-                  <button type="button" id="calcModePct" class="px-2 py-0.5 rounded bg-indigo-600 text-white font-bold">%</button>
-                  <button type="button" id="calcModeUsd" class="px-2 py-0.5 rounded theme-sub font-bold">$</button>
-                </div>
-              </div>
-              <input id="calcRiskPct" type="number" step="any" value="1" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-bold" />
-              <div id="calcPresetRow" class="flex gap-1 mt-1.5">
-                <button type="button" class="calc-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="0.5">0.5%</button>
-                <button type="button" class="calc-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="1">1%</button>
-                <button type="button" class="calc-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="2">2%</button>
-                <button type="button" class="calc-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="5">5%</button>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label id="calcRiskLabel" class="text-[11px] theme-sub">3. Risk Amount (%)</label>
+              <div class="inline-flex rounded-md theme-card border theme-border p-0.5 text-[10px]">
+                <button type="button" id="calcModePct" class="px-2.5 py-0.5 rounded bg-indigo-600 text-white font-bold">%</button>
+                <button type="button" id="calcModeUsd" class="px-2.5 py-0.5 rounded theme-sub font-bold">$</button>
               </div>
             </div>
-            <div>
-              <label class="block text-[11px] theme-sub mb-1">4. Lot Size</label>
-              <input id="calcLotSize" type="number" step="any" min="0.01" value="0.01" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-bold" />
-              <div class="flex gap-1 mt-1.5">
-                <button type="button" class="lot-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-l="0.01">0.01</button>
-                <button type="button" class="lot-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-l="0.02">0.02</button>
-                <button type="button" class="lot-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-l="0.05">0.05</button>
-                <button type="button" class="lot-preset px-2 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-l="0.10">0.10</button>
-              </div>
+            <input id="calcRiskPct" type="number" step="any" value="1" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-bold" />
+            <div id="calcPresetRow" class="flex flex-wrap gap-1.5 mt-1.5">
+              <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="0.5">0.5%</button>
+              <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="1">1%</button>
+              <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="2">2%</button>
+              <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="5">5%</button>
             </div>
           </div>
         </div>
@@ -964,12 +961,14 @@
         <h3 class="text-sm font-bold theme-text uppercase tracking-wider">Instant Trade Plan</h3>
         <div class="grid grid-cols-2 gap-3">
           <div class="p-3.5 rounded-xl theme-card border border-indigo-500/40">
-            <div class="text-[10px] theme-sub uppercase">Max Stop Loss (SL)</div>
-            <div id="calcOutSlPips" class="text-2xl font-extrabold text-indigo-400 mt-1">20.0 Pips</div>
+            <div class="text-[10px] theme-sub uppercase">Recommended Lot Size</div>
+            <div id="calcOutLot" class="text-2xl font-extrabold text-indigo-400 mt-1">0.01 Lots</div>
+            <div id="calcOutSlNote" class="text-[10px] theme-sub mt-0.5">At 50 Pips SL</div>
           </div>
           <div class="p-3.5 rounded-xl theme-card border border-rose-500/30">
             <div class="text-[10px] theme-sub uppercase">Max Risk (-1R)</div>
             <div id="calcOutRisk" class="text-2xl font-extrabold text-rose-500 mt-1">-$2.00</div>
+            <div id="calcOutRiskPct" class="text-[10px] theme-sub mt-0.5">1.00% of balance</div>
           </div>
           <div class="p-3.5 rounded-xl theme-card border theme-border">
             <div class="text-[10px] theme-sub uppercase">2R Profit Target</div>
@@ -982,8 +981,8 @@
             <div id="calcOut3RPips" class="text-[10px] theme-sub mt-0.5">60.0 Pips TP</div>
           </div>
         </div>
-        <div id="calcSummaryLine" class="p-3 rounded-lg theme-card border theme-border text-xs theme-text font-medium">
-          XAU USD: Risking $2.00 at 0.01 Lots gives you a 20.0 Pips Stop Loss (2R TP: 40.0 Pips).
+        <div id="calcSummaryLine" class="p-3 rounded-lg theme-card border theme-border text-xs theme-text font-medium leading-relaxed">
+          0.01 Lot = 20.0 Pips SL | 0.02 Lot = 10.0 Pips SL
         </div>
       </div>
     </section>
@@ -2588,57 +2587,77 @@
       const pipVal = parseFloat(pairSel.value) || 10;
       const pairName = opt.text;
       const unit = opt.dataset.unit || 'Pips';
+      const stdSl = parseFloat(opt.dataset.stdsl) || 50;
       document.getElementById('calcPairSpec').textContent = opt.dataset.spec || '';
 
       const bal = parseFloat(document.getElementById('calcBalance').value) || 0;
       const riskVal = parseFloat(document.getElementById('calcRiskPct').value) || 0;
-      const lots = Math.max(0.01, parseFloat(document.getElementById('calcLotSize').value) || 0.01);
       const riskUsd = calcRiskMode === 'pct' ? bal * (riskVal / 100) : riskVal;
-      const slPips = riskUsd / (lots * pipVal);
+      const riskPctOfBal = bal > 0 ? (riskUsd / bal) * 100 : 0;
 
-      document.getElementById('calcOutSlPips').textContent = `${slPips.toFixed(1)} ${unit}`;
+      const recLots = Math.max(0.01, riskUsd / (stdSl * pipVal));
+      const pips001 = riskUsd / (0.01 * pipVal);
+      const pips002 = riskUsd / (0.02 * pipVal);
+      const pips005 = riskUsd / (0.05 * pipVal);
+
+      document.getElementById('calcOutLot').textContent = `${recLots.toFixed(2)} Lots`;
+      document.getElementById('calcOutSlNote').textContent = `For ${stdSl} ${unit} std SL`;
       document.getElementById('calcOutRisk').textContent = `-${fmtMoney(riskUsd)}`;
+      document.getElementById('calcOutRiskPct').textContent = `${riskPctOfBal.toFixed(2)}% of balance`;
       document.getElementById('calcOut2R').textContent = `+${fmtMoney(riskUsd * 2)}`;
       document.getElementById('calcOut3R').textContent = `+${fmtMoney(riskUsd * 3)}`;
-      document.getElementById('calcOut2RPips').textContent = `${(slPips * 2).toFixed(1)} ${unit} TP`;
-      document.getElementById('calcOut3RPips').textContent = `${(slPips * 3).toFixed(1)} ${unit} TP`;
+      document.getElementById('calcOut2RPips').textContent = `${(pips001 * 2).toFixed(1)} ${unit} (0.01 Lot)`;
+      document.getElementById('calcOut3RPips').textContent = `${(pips001 * 3).toFixed(1)} ${unit} (0.01 Lot)`;
       document.getElementById('calcSummaryLine').textContent =
-        `${pairName}: Risking ${fmtMoney(riskUsd)} at ${lots.toFixed(2)} Lots gives you a ${slPips.toFixed(1)} ${unit} Stop Loss (2R TP: ${(slPips * 2).toFixed(1)} ${unit}).`;
+        `${pairName} SL Pips for ${fmtMoney(riskUsd)}: 0.01 Lot = ${pips001.toFixed(1)} ${unit} | 0.02 Lot = ${pips002.toFixed(1)} ${unit} | 0.05 Lot = ${pips005.toFixed(1)} ${unit}`;
     }
-    ['calcPair', 'calcBalance', 'calcRiskPct', 'calcLotSize'].forEach(id => {
+    ['calcPair', 'calcBalance', 'calcRiskPct'].forEach(id => {
       document.getElementById(id).addEventListener('input', runRiskCalc);
       document.getElementById(id).addEventListener('change', runRiskCalc);
     });
+    document.querySelectorAll('.bal-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('calcBalance').value = btn.dataset.b;
+        runRiskCalc();
+      });
+    });
     document.getElementById('calcModePct').addEventListener('click', () => {
       calcRiskMode = 'pct';
-      document.getElementById('calcModePct').className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-bold';
-      document.getElementById('calcModeUsd').className = 'px-2 py-0.5 rounded theme-sub font-bold';
-      document.getElementById('calcRiskLabel').textContent = '3. Risk (%)';
-      document.getElementById('calcPresetRow').classList.remove('hidden');
+      document.getElementById('calcModePct').className = 'px-2.5 py-0.5 rounded bg-indigo-600 text-white font-bold';
+      document.getElementById('calcModeUsd').className = 'px-2.5 py-0.5 rounded theme-sub font-bold';
+      document.getElementById('calcRiskLabel').textContent = '3. Risk Amount (%)';
+      document.getElementById('calcPresetRow').innerHTML = `
+        <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="0.5">0.5%</button>
+        <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="1">1%</button>
+        <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="2">2%</button>
+        <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="5">5%</button>`;
       document.getElementById('calcRiskPct').value = '1';
+      bindRiskPresets();
       runRiskCalc();
     });
     document.getElementById('calcModeUsd').addEventListener('click', () => {
       calcRiskMode = 'usd';
-      document.getElementById('calcModeUsd').className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-bold';
-      document.getElementById('calcModePct').className = 'px-2 py-0.5 rounded theme-sub font-bold';
-      document.getElementById('calcRiskLabel').textContent = '3. Risk ($)';
-      document.getElementById('calcPresetRow').classList.add('hidden');
+      document.getElementById('calcModeUsd').className = 'px-2.5 py-0.5 rounded bg-indigo-600 text-white font-bold';
+      document.getElementById('calcModePct').className = 'px-2.5 py-0.5 rounded theme-sub font-bold';
+      document.getElementById('calcRiskLabel').textContent = '3. Risk Amount ($)';
+      document.getElementById('calcPresetRow').innerHTML = `
+        <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="2">$2</button>
+        <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="5">$5</button>
+        <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="10">$10</button>
+        <button type="button" class="calc-preset px-2.5 py-0.5 rounded theme-card border theme-border text-[10px] theme-sub hover:border-indigo-500" data-r="20">$20</button>`;
       document.getElementById('calcRiskPct').value = '5';
+      bindRiskPresets();
       runRiskCalc();
     });
-    document.querySelectorAll('.calc-preset').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.getElementById('calcRiskPct').value = btn.dataset.r;
-        runRiskCalc();
+    function bindRiskPresets() {
+      document.querySelectorAll('.calc-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById('calcRiskPct').value = btn.dataset.r;
+          runRiskCalc();
+        });
       });
-    });
-    document.querySelectorAll('.lot-preset').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.getElementById('calcLotSize').value = btn.dataset.l;
-        runRiskCalc();
-      });
-    });
+    }
+    bindRiskPresets();
 
     const _origRenderAll = renderAll;
     renderAll = function() {
