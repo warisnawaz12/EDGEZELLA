@@ -114,6 +114,28 @@
     .anim-draw { stroke-dasharray: 600; animation: drawLine 2.4s ease-out forwards; }
     .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.65s ease-out, transform 0.65s ease-out; }
     .reveal.visible { opacity: 1; transform: translateY(0); }
+    @keyframes tabEnter {
+      from { opacity: 0; transform: translateY(10px) scale(0.992); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .tab-animate { animation: tabEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+    .glass-card {
+      transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.45);
+      box-shadow: 0 8px 28px -8px rgba(99, 102, 241, 0.18);
+      transform: translateY(-2px);
+    }
+    .glass-card:active {
+      transform: scale(0.988);
+    }
+    .nav-btn {
+      transition: transform 0.14s ease, background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+    }
+    .nav-btn:active {
+      transform: scale(0.96);
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -1113,6 +1135,11 @@
             <button type="button" class="tf-btn px-2 py-1 rounded theme-sub" data-tf="5m">5m</button>
             <button type="button" class="tf-btn px-2 py-1 rounded theme-sub" data-tf="15m">15m</button>
           </div>
+          <div class="inline-flex rounded-lg theme-card border theme-border p-0.5 text-[11px] font-semibold">
+            <button type="button" class="spd-btn px-2 py-1 rounded theme-sub" data-spd="850">0.5x</button>
+            <button type="button" class="spd-btn px-2 py-1 rounded bg-emerald-600 text-white" data-spd="450">1x</button>
+            <button type="button" class="spd-btn px-2 py-1 rounded theme-sub" data-spd="200">2x</button>
+          </div>
           <button id="replayPlayBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white flex items-center gap-1">
             <i data-lucide="play" class="w-3.5 h-3.5"></i> Play
           </button>
@@ -1940,6 +1967,18 @@
       drawReplay(0);
     }
 
+    let replaySpeedMs = 450;
+    document.querySelectorAll('.spd-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        replaySpeedMs = parseInt(btn.dataset.spd, 10) || 450;
+        document.querySelectorAll('.spd-btn').forEach(b => {
+          b.className = parseInt(b.dataset.spd, 10) === replaySpeedMs
+            ? 'spd-btn px-2 py-1 rounded bg-emerald-600 text-white'
+            : 'spd-btn px-2 py-1 rounded theme-sub';
+        });
+      });
+    });
+
     let replayTf = '1m';
     let tvChart = null;
     let tvSeries = null;
@@ -2113,7 +2152,7 @@
           tvSeries.setMarkers([{ time: tvCandlesAll[entryIdx].time, position: t.side === 'LONG' ? 'belowBar' : 'aboveBar', color: '#818CF8', shape: t.side === 'LONG' ? 'arrowUp' : 'arrowDown', text: `${t.side} @ ${t.entry || 100}` }]);
         }
         idx++;
-      }, 95);
+      }, replaySpeedMs);
     });
 
 
@@ -2200,7 +2239,10 @@
       };
       document.getElementById('pageTitle').textContent = titles[tab] || 'Dashboard';
       document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      const activeSec = document.getElementById(`tab-${tab}`);
+      activeSec.classList.remove('hidden', 'tab-animate');
+      void activeSec.offsetWidth;
+      activeSec.classList.add('tab-animate');
 
       document.querySelectorAll('.nav-btn').forEach(btn => {
         const active = btn.dataset.tab === tab;
