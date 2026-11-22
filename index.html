@@ -1107,6 +1107,11 @@
         </div>
         <div class="flex items-center gap-2">
           <select id="replayTradeSelect" class="theme-card border theme-border rounded-lg px-3 py-1.5 text-xs theme-text"></select>
+          <div class="inline-flex rounded-lg theme-card border theme-border p-0.5 text-[11px] font-semibold">
+            <button type="button" class="tf-btn px-2 py-1 rounded bg-indigo-600 text-white" data-tf="1m">1m</button>
+            <button type="button" class="tf-btn px-2 py-1 rounded theme-sub" data-tf="5m">5m</button>
+            <button type="button" class="tf-btn px-2 py-1 rounded theme-sub" data-tf="15m">15m</button>
+          </div>
           <button id="replayPlayBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white flex items-center gap-1">
             <i data-lucide="play" class="w-3.5 h-3.5"></i> Play
           </button>
@@ -1932,45 +1937,81 @@
       drawReplay(0);
     }
 
+    let replayTf = '1m';
+    function buildReplayCandles(t, count) {
+      const entry = t.entry || 100;
+      const exit = t.exit || (t.pnl >= 0 ? entry * 1.01 : entry * 0.99);
+      const diff = exit - entry || (t.pnl >= 0 ? 1 : -1);
+      const candles = [];
+      let prev = entry - diff * 0.08;
+      // Deterministic pseudo-random wave based on trade price
+      let seed = Math.abs(Math.round((entry + exit) * 100)) + 17;
+      const nextRand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+
+      for (let i = 0; i < count; i++) {
+        const progress = (i + 1) / count;
+        const target = (entry - diff * 0.08) + (diff * 1.08) * progress;
+        const wave = (nextRand() - 0.46) * Math.abs(diff) * 0.16;
+        const close = i === count - 1 ? exit : (i === 2 ? entry : target + wave);
+        const open = prev;
+        const body = Math.abs(close - open);
+        const wickUp = body * (0.3 + nextRand() * 0.9) + Math.abs(diff) * 0.015;
+        const wickDn = body * (0.3 + nextRand() * 0.9) + Math.abs(diff) * 0.015;
+        candles.push({
+          o: open,
+          c: close,
+          h: Math.max(open, close) + wickUp,
+          l: Math.min(open, close) - wickDn
+        });
+        prev = close;
+      }
+      return { candles, entry, exit };
+    }
+
     function drawReplay(step) {
       const sel = document.getElementById('replayTradeSelect');
       const list = window._replayTrades && window._replayTrades.length ? window._replayTrades : state.trades;
       const t = list[sel.selectedIndex >= 0 ? sel.selectedIndex : 0] || list[0];
       if (!t) return;
-      const entry = t.entry || 100;
-      const exit = t.exit || (t.pnl >= 0 ? entry * 1.01 : entry * 0.99);
-      const diff = exit - entry || (t.pnl >= 0 ? 1 : -1);
-      const stepPts = [
-        entry - diff * 0.12, entry, entry + diff * 0.18, entry + diff * 0.08,
-        entry + diff * 0.42, entry + diff * 0.34, entry + diff * 0.68, entry + diff * 0.86, exit
-      ];
-      const candles = [];
-      const pad = Math.abs(diff) * 0.12 + 0.0001;
-      for (let i = 0; i < stepPts.length - 1; i++) {
-        const o = stepPts[i], c = stepPts[i + 1];
-        candles.push({ o, c, h: Math.max(o, c) + pad, l: Math.min(o, c) - pad });
-      }
-      const allLows = candles.map(c => c.l);
-      const allHighs = candles.map(c => c.h);
-      const yMin = Math.min(...allLows) - pad;
-      const yMax = Math.max(...allHighs) + pad;
 
+      const count = replayTf === '1m' ? 36 : (replayTf === '5m' ? 22 : 12);
+      const { candles, entry, exit } = buildReplayCandles(t, count);
+      const pad = Math.abs(exit - entry || 1) * 0.14;
+      const yMin = Math.min(...candles.map(c => c.l)) - pad;
+      const yMax = Math.max(...candles.map(c => c.h)) + pad;
       const shown = step > 0 ? candles.slice(0, Math.min(step, candles.length)) : candles;
+
       const isLight = state.theme === 'light';
       const gridColor = isLight ? '#E2E8F0' : '#1E2536';
       const tickColor = isLight ? '#64748B' : '#6B7280';
 
-      const wickPlugin = {
-        id: 'candleWicks',
+      const tvPlugin = {
+        id: 'tvCandles',
         afterDatasetsDraw(chart) {
-          const { ctx, scales: { y } } = chart;
+          const { ctx, chartArea: { left, right }, scales: { y } } = chart;
           const meta = chart.getDatasetMeta(0);
           ctx.save();
+          // Entry & Exit dashed levels
+          const drawLevel = (val, color, label) => {
+            const py = y.getPixelForValue(val);
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = color;
+            ctx.font = '600 10px Inter, sans-serif';
+            ctx.fillText(label, left + 6, py - 4);
+          };
+          drawLevel(entry, '#818CF8', `Entry ${entry}`);
+          drawLevel(exit, t.pnl >= 0 ? '#10B981' : '#EF4444', `Exit ${exit}`);
+
+          // Wicks
           meta.data.forEach((bar, i) => {
             const c = shown[i];
             if (!c) return;
             ctx.strokeStyle = c.c >= c.o ? '#10B981' : '#EF4444';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(bar.x, y.getPixelForValue(c.h));
             ctx.lineTo(bar.x, y.getPixelForValue(c.l));
@@ -1983,28 +2024,31 @@
       destroyChart('replay');
       charts.replay = new Chart(document.getElementById('replayChart'), {
         type: 'bar',
-        plugins: [wickPlugin],
+        plugins: [tvPlugin],
         data: {
-          labels: shown.map((_, i) => `Candle ${i + 1}`),
+          labels: shown.map((_, i) => `${i + 1}`),
           datasets: [{
             label: t.symbol,
             data: shown.map(c => [c.o, c.c]),
             backgroundColor: shown.map(c => c.c >= c.o ? '#10B981' : '#EF4444'),
-            borderRadius: 2,
-            barPercentage: 0.5
+            borderRadius: 1,
+            barPercentage: 0.72,
+            categoryPercentage: 0.85
           }]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
+          animation: { duration: 120 },
           plugins: { legend: { display: false } },
           scales: {
-            x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } },
+            x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 9 }, maxTicksLimit: 12 } },
             y: { beginAtZero: false, min: yMin, max: yMax, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } }
           }
         }
       });
       document.getElementById('replayInfo').innerHTML = `
         <span>Symbol: <strong class="theme-text">${t.symbol}</strong></span>
+        <span>Timeframe: <strong class="text-indigo-400">${replayTf} (${count} candles)</strong></span>
         <span>Side: <strong class="text-indigo-400">${t.side}</strong></span>
         <span>Entry: <strong class="theme-text">${entry}</strong></span>
         <span>Exit: <strong class="theme-text">${exit}</strong></span>
@@ -2289,11 +2333,25 @@
 
     document.getElementById('replayTradeSelect').addEventListener('change', () => drawReplay(0));
     document.getElementById('replayResetBtn').addEventListener('click', () => { clearInterval(replayTimer); drawReplay(0); });
+    document.querySelectorAll('.tf-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        replayTf = btn.dataset.tf;
+        document.querySelectorAll('.tf-btn').forEach(b => {
+          b.className = b.dataset.tf === replayTf
+            ? 'tf-btn px-2 py-1 rounded bg-indigo-600 text-white'
+            : 'tf-btn px-2 py-1 rounded theme-sub';
+        });
+        clearInterval(replayTimer);
+        drawReplay(0);
+      });
+    });
     document.getElementById('replayPlayBtn').addEventListener('click', () => {
       clearInterval(replayTimer);
+      const maxSteps = replayTf === '1m' ? 36 : (replayTf === '5m' ? 22 : 12);
+      const speed = replayTf === '1m' ? 140 : (replayTf === '5m' ? 210 : 300);
       let step = 1;
       drawReplay(step);
-      replayTimer = setInterval(() => { step++; drawReplay(step); if (step >= 8) clearInterval(replayTimer); }, 450);
+      replayTimer = setInterval(() => { step++; drawReplay(step); if (step >= maxSteps) clearInterval(replayTimer); }, speed);
     });
 
     document.getElementById('exportCsvBtn').addEventListener('click', () => {
