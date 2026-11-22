@@ -1441,29 +1441,6 @@
       return fmtMoney(n);
     }
 
-    function getSymbolIcon(sym) {
-      const u = String(sym || '').toUpperCase();
-      if (u.includes('XAU') || u.includes('GOLD')) {
-        return `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-400 text-[9px] font-extrabold shrink-0" title="Gold">Au</span>`;
-      }
-      if (u.includes('BTC')) {
-        return `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-extrabold shrink-0" title="Bitcoin">₿</span>`;
-      }
-      if (u.includes('ETH')) {
-        return `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500 text-white text-[10px] font-extrabold shrink-0" title="Ethereum">Ξ</span>`;
-      }
-      if (u.includes('NQ') || u.includes('NAS') || u.includes('USTEC') || u.includes('US100') || u.includes('US30')) {
-        return `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[8px] font-extrabold shrink-0" title="Index">100</span>`;
-      }
-      if (u.includes('EUR')) {
-        return `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-sky-500/20 border border-sky-400/50 text-sky-400 text-[10px] font-extrabold shrink-0" title="EUR">€</span>`;
-      }
-      if (u.includes('GBP')) {
-        return `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-purple-500/20 border border-purple-400/50 text-purple-400 text-[10px] font-extrabold shrink-0" title="GBP">£</span>`;
-      }
-      return `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-400 text-[9px] font-extrabold shrink-0">$</span>`;
-    }
-
     function fmtCompact(n) {
       if (state.displayMode === '%') {
         const pct = (n / getBaseBalance()) * 100;
@@ -1804,7 +1781,7 @@
       tbody.innerHTML = recent.map(t => `
         <tr class="hover:opacity-80">
           <td class="py-2 theme-sub">${t.date}</td>
-          <td class="py-2 font-semibold theme-text"><span class="inline-flex items-center gap-1.5">${getSymbolIcon(t.symbol)}${t.symbol}</span></td>
+          <td class="py-2 font-semibold theme-text">${t.symbol}</td>
           <td class="py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span></td>
           <td class="py-2 theme-sub">${t.strategy}</td>
           <td class="py-2 text-right font-bold ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtVal(t.pnl)}</td>
@@ -1836,7 +1813,7 @@
       document.getElementById('allTradesBody').innerHTML = filtered.map(t => `
         <tr class="hover:opacity-80">
           <td class="py-2.5 theme-sub">${t.date}</td>
-          <td class="py-2.5 font-semibold theme-text"><span class="inline-flex items-center gap-1.5">${getSymbolIcon(t.symbol)}${t.symbol}</span></td>
+          <td class="py-2.5 font-semibold theme-text">${t.symbol}</td>
           <td class="py-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span></td>
           <td class="py-2.5 font-semibold ${t.outcome === 'SL' ? 'text-rose-500' : (t.outcome === 'BE' ? 'text-amber-400' : 'text-emerald-500')}">${t.outcome || (t.pnl > 0 ? 'TP' : (t.pnl < 0 ? 'SL' : 'BE'))} (${t.rMultiple || (t.pnl > 0 ? '+1R' : (t.pnl < 0 ? '-1R' : '0R'))})</td>
           <td class="py-2.5 text-indigo-400">${t.strategy}</td>
@@ -1878,7 +1855,7 @@
           <div class="flex items-center gap-3">
             <span class="px-2 py-1 rounded text-[11px] font-bold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span>
             <div>
-              <div class="text-sm font-bold theme-text flex items-center gap-1.5">${getSymbolIcon(t.symbol)}<span>${t.symbol}</span> <span class="text-xs font-normal text-indigo-400">• ${t.strategy}</span></div>
+              <div class="text-sm font-bold theme-text">${t.symbol} <span class="text-xs font-normal text-indigo-400">• ${t.strategy}</span></div>
               <div class="text-xs theme-sub">${t.notes || 'No notes'}</div>
             </div>
           </div>
@@ -2334,7 +2311,8 @@
             const idxTime = headers.findIndex(h => h.includes('closing time') || h.includes('time') || h.includes('date'));
             const idxSym = headers.findIndex(h => h.includes('symbol'));
             const idxType = headers.findIndex(h => h.includes('type') || h.includes('side'));
-            const idxProfit = headers.findIndex(h => h.includes('profit'));
+            let idxProfit = headers.findIndex(h => h === 'profit' || h === 'profit, usd' || h === 'p/l, usd' || h === 'net profit');
+            if (idxProfit < 0) idxProfit = headers.findIndex(h => h.includes('profit') && !h.includes('take'));
             const idxComm = headers.findIndex(h => h.includes('commission'));
             const idxSwap = headers.findIndex(h => h.includes('swap'));
             const idxComment = headers.findIndex(h => h.includes('comment'));
@@ -2345,7 +2323,9 @@
 
             const cleanNum = (v) => parseFloat(String(v || '0').replace(/,/g, '')) || 0;
             const pnlVal = cleanNum(cols[idxProfit]) + (idxComm >= 0 ? cleanNum(cols[idxComm]) : 0) + (idxSwap >= 0 ? cleanNum(cols[idxSwap]) : 0);
-            const outcome = pnlVal > 0 ? 'TP' : (pnlVal < 0 ? 'SL' : 'BE');
+            const idxReason = headers.findIndex(h => h.includes('reason'));
+            const reason = idxReason >= 0 ? (cols[idxReason] || '').toLowerCase() : '';
+            const outcome = pnlVal < 0 ? 'SL' : (pnlVal > 0 ? 'TP' : (reason === 'sl' ? 'SL' : 'BE'));
 
             tradeObj = {
               id: 'ex_' + Date.now() + '_' + added,
@@ -2711,7 +2691,7 @@
       const pairName = opt.text;
       const unit = opt.dataset.unit || 'Pips';
       const stdSl = parseFloat(opt.dataset.stdsl) || 50;
-      document.getElementById('calcPairSpec').innerHTML = `<span class="inline-flex items-center gap-1.5">${getSymbolIcon(pairName)}<span>${opt.dataset.spec || ''}</span></span>`;
+      document.getElementById('calcPairSpec').textContent = opt.dataset.spec || '';
 
       const bal = parseFloat(document.getElementById('calcBalance').value) || 0;
       const riskVal = parseFloat(document.getElementById('calcRiskPct').value) || 0;
@@ -2808,7 +2788,7 @@
           <div class="flex items-center gap-2.5 min-w-0">
             <input type="checkbox" class="csv-pick-cb accent-indigo-500" data-idx="${idx}" />
             <div class="truncate">
-              <span class="inline-flex items-center gap-1.5 font-bold theme-text">${getSymbolIcon(t.symbol)}${t.symbol}</span>
+              <span class="font-bold theme-text">${t.symbol}</span>
               <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span>
               <span class="theme-sub ml-1.5">${t.date}</span>
             </div>
