@@ -745,12 +745,12 @@
           </div>
         </div>
 
-        <!-- Profit Factor -->
+        <!-- Net RRR Gained -->
         <div class="glass-card p-3.5 flex items-center justify-between gap-2">
           <div>
-            <div class="text-xs theme-sub font-medium flex items-center gap-1.5"><i data-lucide="percent" class="w-3.5 h-3.5 text-purple-400"></i> Profit factor</div>
-            <div id="kpiProfitFactor" class="text-2xl font-bold theme-text mt-2">0.00</div>
-            <div id="kpiExpectancy" class="text-[11px] theme-sub mt-1">Exp: $0.00</div>
+            <div class="text-xs theme-sub font-medium flex items-center gap-1.5"><i data-lucide="trending-up" class="w-3.5 h-3.5 text-blue-400"></i> Net RRR Gained</div>
+            <div id="kpiTotalR" class="text-2xl font-bold text-emerald-500 mt-2">+0.0R</div>
+            <div id="kpiPeriodR" class="text-[11px] theme-sub mt-1">Today: +0R • Week: +0R</div>
           </div>
           <div class="relative w-14 h-14 shrink-0">
             <canvas id="pfRingChart"></canvas>
@@ -1242,19 +1242,13 @@
             <input type="number" step="0.01" id="tPnl" placeholder="250 or -120" required class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text" />
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-[11px] theme-sub mb-1">Outcome</label>
-            <select id="tOutcome" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-semibold">
-              <option value="TP">TP (Take Profit)</option>
-              <option value="SL">SL (Stop Loss)</option>
-              <option value="BE">BE (Breakeven)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-[11px] theme-sub mb-1">R-Multiple</label>
-            <input type="text" id="tRMultiple" value="+2R" placeholder="e.g. +2.5R" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-bold" />
-          </div>
+        <div>
+          <label class="block text-[11px] theme-sub mb-1">Outcome</label>
+          <select id="tOutcome" class="w-full theme-card border theme-border rounded-lg px-3 py-2 text-xs theme-text font-semibold">
+            <option value="TP">TP (Take Profit)</option>
+            <option value="SL">SL (Stop Loss)</option>
+            <option value="BE">BE (Breakeven)</option>
+          </select>
         </div>
         <div>
           <label class="block text-[11px] theme-sub mb-1">Strategy / Setup</label>
@@ -1641,8 +1635,20 @@
       const recScore = netPnl > 0 ? Math.min(100, 60 + (netPnl / base) * 100) : 30;
       const edgeScore = Math.round((wrScore + pfScore + rrScore + consScore + recScore) / 5);
 
+      const parseR = (t) => {
+        const raw = t.rMultiple || (t.pnl > 0 ? '+1R' : (t.pnl < 0 ? '-1R' : '0R'));
+        const num = parseFloat(String(raw).replace(/[^0-9.-]/g, ''));
+        return isNaN(num) ? 0 : num;
+      };
+      const totalR = trades.reduce((sum, t) => sum + parseR(t), 0);
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const todayR = trades.filter(t => t.date === todayIso).reduce((sum, t) => sum + parseR(t), 0);
+      const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekIso = weekAgo.toISOString().slice(0, 10);
+      const weekR = trades.filter(t => t.date >= weekIso).reduce((sum, t) => sum + parseR(t), 0);
+
       return {
-        total, wins: wins.length, losses: losses.length, netPnl,
+        total, wins: wins.length, losses: losses.length, netPnl, totalR, todayR, weekR,
         winRate, avgWin, avgLoss, avgRatio, profitFactor, expectancy,
         curTradeStreak, curDayStreak, maxWinStreak, dailyMap, sortedDays,
         maxDdPct, highBal, sqn, bestDay, worstDay,
@@ -1671,8 +1677,11 @@
       document.getElementById('kpiAvgWinText').textContent = fmtMoney(m.avgWin);
       document.getElementById('kpiAvgLossText').textContent = `-${fmtMoney(m.avgLoss)}`;
 
-      document.getElementById('kpiProfitFactor').textContent = m.profitFactor.toFixed(2);
-      document.getElementById('kpiExpectancy').textContent = `Exp: ${fmtMoney(m.expectancy)}`;
+      const fmtR = (r) => `${r >= 0 ? '+' : ''}${r.toFixed(1)}R`;
+      const totREl = document.getElementById('kpiTotalR');
+      totREl.textContent = fmtR(m.totalR);
+      totREl.className = `text-2xl font-bold mt-2 ${m.totalR >= 0 ? 'text-emerald-500' : 'text-rose-500'}`;
+      document.getElementById('kpiPeriodR').textContent = `Today: ${fmtR(m.todayR)} • Week: ${fmtR(m.weekR)}`;
 
       document.getElementById('kpiDayStreak').innerHTML = `${m.curDayStreak} <span class="text-xs">🔥</span>`;
       document.getElementById('kpiTradeStreak').textContent = m.curTradeStreak;
@@ -1910,7 +1919,10 @@
           <td class="py-2.5 theme-sub">${t.date}</td>
           <td class="py-2.5 font-semibold theme-text"><span class="inline-flex items-center gap-2">${getPairLogo(t.symbol)}<span>${t.symbol}</span></span></td>
           <td class="py-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span></td>
-          <td class="py-2.5 font-semibold ${t.outcome === 'SL' ? 'text-rose-500' : (t.outcome === 'BE' ? 'text-amber-400' : 'text-emerald-500')}">${t.outcome || (t.pnl > 0 ? 'TP' : (t.pnl < 0 ? 'SL' : 'BE'))} (${t.rMultiple || (t.pnl > 0 ? '+1R' : (t.pnl < 0 ? '-1R' : '0R'))})</td>
+          <td class="py-2.5">
+            <span class="font-semibold ${t.outcome === 'SL' ? 'text-rose-500' : (t.outcome === 'BE' ? 'text-amber-400' : 'text-emerald-500')}">${t.outcome || (t.pnl > 0 ? 'TP' : (t.pnl < 0 ? 'SL' : 'BE'))}</span>
+            <input type="text" value="${t.rMultiple || (t.pnl > 0 ? '+1R' : (t.pnl < 0 ? '-1R' : '0R'))}" onchange="updateTradeR('${t.id}', this.value)" class="ml-1 w-14 px-1.5 py-0.5 rounded theme-card border theme-border text-[11px] font-bold theme-text text-center focus:border-blue-500 focus:outline-none" title="Edit R-Multiple" />
+          </td>
           <td class="py-2.5 text-indigo-400">${t.strategy}</td>
           <td class="py-2.5 theme-sub max-w-[200px] truncate">${t.notes || '-'}</td>
           <td class="py-2.5 text-right font-bold ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtVal(t.pnl)}</td>
@@ -2286,6 +2298,16 @@
     }
 
     window.openDayDetail = function(dateStr) { switchTab('dayview'); renderDayView(dateStr); };
+    window.updateTradeR = function(id, val) {
+      const tr = state.trades.find(x => String(x.id) === String(id));
+      if (!tr) return;
+      let clean = val.trim().toUpperCase();
+      if (clean && !clean.endsWith('R')) clean += 'R';
+      tr.rMultiple = clean || '0R';
+      saveState();
+      renderAll();
+      showToast(`Updated R to ${tr.rMultiple}`);
+    };
     window.deleteTrade = function(id) { state.trades = state.trades.filter(t => t.id !== id); saveState(); renderAll(); showToast('Trade deleted'); };
     window.deleteNote = function(id) { state.notes = state.notes.filter(n => n.id !== id); saveState(); renderNotes(); renderCalendar(computeMetrics(getFilteredTrades())); showToast('Note deleted'); };
     window.deletePlaybook = function(id) { state.playbook = state.playbook.filter(p => p.id !== id); saveState(); renderPlaybook(); showToast('Setup removed'); };
@@ -2368,20 +2390,13 @@
     });
 
     const tOutcomeEl = document.getElementById('tOutcome');
-    const tREl = document.getElementById('tRMultiple');
     const tPnlEl = document.getElementById('tPnl');
     tOutcomeEl.addEventListener('change', () => {
       if (tOutcomeEl.value === 'SL') {
-        tREl.value = '-1R';
-        tREl.readOnly = true;
         if (parseFloat(tPnlEl.value) > 0) tPnlEl.value = -Math.abs(parseFloat(tPnlEl.value));
       } else if (tOutcomeEl.value === 'BE') {
-        tREl.value = '0R';
-        tREl.readOnly = true;
         tPnlEl.value = '0';
       } else {
-        tREl.readOnly = false;
-        if (tREl.value === '-1R' || tREl.value === '0R') tREl.value = '+2R';
         if (parseFloat(tPnlEl.value) < 0) tPnlEl.value = Math.abs(parseFloat(tPnlEl.value));
       }
     });
@@ -2431,7 +2446,7 @@
         symbol: document.getElementById('tSymbol').value.trim().toUpperCase(),
         side: document.getElementById('tSide').value,
         outcome: document.getElementById('tOutcome').value,
-        rMultiple: document.getElementById('tRMultiple').value.trim() || '0R',
+        rMultiple: document.getElementById('tOutcome').value === 'SL' ? '-1R' : (document.getElementById('tOutcome').value === 'BE' ? '0R' : '+2R'),
         entry: 0,
         exit: 0,
         pnl: parseFloat(document.getElementById('tPnl').value) || 0,
@@ -2576,16 +2591,34 @@
             const reason = idxReason >= 0 ? (cols[idxReason] || '').toLowerCase() : '';
             const outcome = pnlVal < 0 ? 'SL' : (pnlVal > 0 ? 'TP' : (reason === 'sl' ? 'SL' : 'BE'));
 
+            const idxOpenP = headers.findIndex(h => h.includes('opening_price') || h.includes('opening price'));
+            const idxCloseP = headers.findIndex(h => h.includes('closing_price') || h.includes('closing price'));
+            const idxSlP = headers.findIndex(h => h.includes('stop_loss') || h === 's/l' || h === 'sl');
+            const openP = idxOpenP >= 0 ? cleanNum(cols[idxOpenP]) : 0;
+            const closeP = idxCloseP >= 0 ? cleanNum(cols[idxCloseP]) : 0;
+            const slP = idxSlP >= 0 ? cleanNum(cols[idxSlP]) : 0;
+            const tradeSide = (rawSide.includes('sell') || rawSide.includes('short')) ? 'SHORT' : 'LONG';
+
+            let rLabel = outcome === 'SL' ? '-1R' : (outcome === 'BE' ? '0R' : '+1R');
+            if (slP > 0 && openP > 0 && Math.abs(openP - slP) > 0) {
+              const slDist = Math.abs(openP - slP);
+              const move = tradeSide === 'LONG' ? (closeP - openP) : (openP - closeP);
+              const rVal = move / slDist;
+              if (outcome === 'BE') rLabel = '0R';
+              else if (outcome === 'SL') rLabel = reason === 'sl' ? '-1R' : `${rVal.toFixed(1)}R`;
+              else rLabel = `+${Math.abs(rVal).toFixed(1)}R`;
+            }
+
             tradeObj = {
               id: 'ex_' + Date.now() + '_' + added,
               date: parseExnessDate(cols[idxTime]),
               symbol: sym,
-              side: (rawSide.includes('sell') || rawSide.includes('short')) ? 'SHORT' : 'LONG',
-              entry: (() => { const i = headers.findIndex(h => h.includes('opening_price') || h.includes('opening price')); return i >= 0 ? cleanNum(cols[i]) : 0; })(),
-              exit: (() => { const i = headers.findIndex(h => h.includes('closing_price') || h.includes('closing price')); return i >= 0 ? cleanNum(cols[i]) : 0; })(),
+              side: tradeSide,
+              entry: openP,
+              exit: closeP,
               pnl: Number(pnlVal.toFixed(2)),
               outcome: outcome,
-              rMultiple: outcome === 'SL' ? '-1R' : (outcome === 'BE' ? '0R' : '+1R'),
+              rMultiple: rLabel,
               strategy: 'Exness',
               notes: idxComment >= 0 ? (cols[idxComment] || 'Exness Import') : 'Exness Import'
             };
