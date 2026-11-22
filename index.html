@@ -2116,6 +2116,285 @@
       }, 95);
     });
 
+
+    function renderProgress() {
+      document.getElementById('rulesChecklist').innerHTML = state.rules.map(r => `
+        <label class="flex items-center gap-2.5 p-2.5 rounded-lg theme-card border theme-border cursor-pointer text-xs">
+          <input type="checkbox" ${r.done ? 'checked' : ''} onchange="toggleRule('${r.id}')" class="accent-indigo-500" />
+          <span class="${r.done ? 'line-through theme-muted' : 'theme-text'}">${r.text}</span>
+        </label>
+      `).join('');
+
+      const doneCount = state.rules.filter(r => r.done).length;
+      const pct = state.rules.length ? Math.round((doneCount / state.rules.length) * 100) : 0;
+      document.getElementById('milestonesList').innerHTML = `
+        <div class="p-3 rounded-lg theme-card border theme-border">
+          <div class="flex justify-between mb-1"><span class="theme-sub">Daily Rule Adherence</span><span class="font-bold text-indigo-400">${pct}%</span></div>
+          <div class="w-full h-2 rounded-full theme-panel"><div class="h-2 rounded-full bg-indigo-500" style="width:${pct}%"></div></div>
+        </div>
+        <div class="p-3 rounded-lg theme-card border theme-border flex justify-between">
+          <span class="theme-sub">Journaled Notes</span>
+          <span class="font-bold text-emerald-500">${state.notes.length} entries</span>
+        </div>
+        <div class="p-3 rounded-lg theme-card border theme-border flex justify-between">
+          <span class="theme-sub">Playbook Setups Defined</span>
+          <span class="font-bold theme-text">${state.playbook.length} setups</span>
+        </div>
+      `;
+    }
+
+    function renderAiInsights(m, trades) {
+      const symMap = {};
+      for (const t of trades) symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl;
+      const bestSym = Object.entries(symMap).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+      const worstSym = Object.entries(symMap).sort((a, b) => a[1] - b[1])[0] || ['N/A', 0];
+
+      document.getElementById('aiInsightsGrid').innerHTML = `
+        <div class="p-3.5 rounded-lg theme-card border border-emerald-500/30 space-y-1">
+          <div class="text-[11px] font-bold text-emerald-500 uppercase">Top Performing Asset</div>
+          <div class="text-base font-bold theme-text">${bestSym[0]} (${fmtMoney(bestSym[1])})</div>
+          <p class="text-xs theme-sub">Focus your A+ size on ${bestSym[0]} where your edge is strongest.</p>
+        </div>
+        <div class="p-3.5 rounded-lg theme-card border border-indigo-500/30 space-y-1">
+          <div class="text-[11px] font-bold text-indigo-400 uppercase">Expectancy &amp; Edge</div>
+          <div class="text-base font-bold theme-text">${fmtMoney(m.expectancy)} / trade</div>
+          <p class="text-xs theme-sub">Profit Factor of ${m.profitFactor.toFixed(2)} with ${m.winRate.toFixed(1)}% win rate.</p>
+        </div>
+        <div class="p-3.5 rounded-lg theme-card border border-rose-500/30 space-y-1">
+          <div class="text-[11px] font-bold text-rose-500 uppercase">Leak to Watch</div>
+          <div class="text-base font-bold theme-text">${worstSym[0]} (${fmtMoney(worstSym[1])})</div>
+          <p class="text-xs theme-sub">Review losing setups on ${worstSym[0]} and tighten entry rules.</p>
+        </div>
+      `;
+    }
+
+    function renderAll() {
+      populateFilters();
+      const trades = getFilteredTrades();
+      const m = computeMetrics(trades);
+      renderKPIs(m);
+      renderCharts(m);
+      renderCalendar(m);
+      renderRecentTrades(trades);
+      renderAllTrades(trades);
+      renderDayView();
+      renderNotes();
+      renderReports(trades);
+      renderPlaybook();
+      renderReplaySelect(trades);
+      renderProgress();
+      renderAiInsights(m, trades);
+    }
+
+    window.openDayDetail = function(dateStr) { switchTab('dayview'); renderDayView(dateStr); };
+    window.deleteTrade = function(id) { state.trades = state.trades.filter(t => t.id !== id); saveState(); renderAll(); showToast('Trade deleted'); };
+    window.deleteNote = function(id) { state.notes = state.notes.filter(n => n.id !== id); saveState(); renderNotes(); renderCalendar(computeMetrics(getFilteredTrades())); showToast('Note deleted'); };
+    window.deletePlaybook = function(id) { state.playbook = state.playbook.filter(p => p.id !== id); saveState(); renderPlaybook(); showToast('Setup removed'); };
+    window.toggleRule = function(id) { const r = state.rules.find(x => x.id === id); if (r) r.done = !r.done; saveState(); renderProgress(); };
+
+    function switchTab(tab) {
+      const titles = {
+        dashboard: 'Dashboard', calendar: 'Trading Calendar', dayview: 'Day View', trades: 'Trade View',
+        notebook: 'Notebook', reports: 'Reports', playbook: 'Playbook',
+        replay: 'Trade Replay', progress: 'Progress Tracker', insights: 'AI Insights', calculator: 'Risk Calculator'
+      };
+      document.getElementById('pageTitle').textContent = titles[tab] || 'Dashboard';
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const active = btn.dataset.tab === tab;
+        btn.className = active
+          ? 'nav-btn w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+          : 'nav-btn w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5';
+      });
+      if (tab === 'replay') setTimeout(() => drawReplay(0), 60);
+      if (window.innerWidth < 1024) document.getElementById('sidebar').classList.add('hidden');
+    }
+
+    function openAddModal() {
+      document.getElementById('tDate').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('addTradeModal').classList.remove('hidden');
+    }
+    function closeAddModal() { document.getElementById('addTradeModal').classList.add('hidden'); }
+
+    function toggleTheme() {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      saveState();
+      applyTheme();
+      renderCharts(computeMetrics(getFilteredTrades()));
+      drawReplay(0);
+      showToast(`Switched to ${state.theme === 'light' ? 'Light' : 'Dark'} Mode`);
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+    document.querySelectorAll('[data-goto]').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.goto)));
+
+    document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
+    document.getElementById('mobileThemeBtn').addEventListener('click', toggleTheme);
+
+    document.getElementById('recentTabBtn').addEventListener('click', () => {
+      document.getElementById('recentTradesPanel').classList.remove('hidden');
+      document.getElementById('openPosPanel').classList.add('hidden');
+      document.getElementById('recentTabBtn').className = 'text-xs font-bold text-indigo-400 border-b-2 border-indigo-500 pb-1';
+      document.getElementById('openPosTabBtn').className = 'text-xs font-medium theme-sub pb-1';
+    });
+    document.getElementById('openPosTabBtn').addEventListener('click', () => {
+      document.getElementById('recentTradesPanel').classList.add('hidden');
+      document.getElementById('openPosPanel').classList.remove('hidden');
+      document.getElementById('openPosTabBtn').className = 'text-xs font-bold text-indigo-400 border-b-2 border-indigo-500 pb-1';
+      document.getElementById('recentTabBtn').className = 'text-xs font-medium theme-sub pb-1';
+    });
+
+    document.getElementById('sidebarAddTradeBtn').addEventListener('click', openAddModal);
+    document.getElementById('mobileAddTradeBtn').addEventListener('click', openAddModal);
+    document.getElementById('closeModalBtn').addEventListener('click', closeAddModal);
+    document.getElementById('cancelModalBtn').addEventListener('click', closeAddModal);
+
+    document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.remove('hidden');
+      document.getElementById('sidebar').classList.add('flex');
+    });
+    document.getElementById('closeSidebarBtn').addEventListener('click', () => document.getElementById('sidebar').classList.add('hidden'));
+
+    document.getElementById('saveBalanceBtn').addEventListener('click', () => {
+      const val = parseFloat(document.getElementById('startingBalanceInput').value);
+      state.startingBalance = isNaN(val) || val < 0 ? 0 : val;
+      saveState();
+      renderAll();
+      showToast(`Starting balance set to ${fmtMoney(state.startingBalance)}`);
+    });
+
+    const tOutcomeEl = document.getElementById('tOutcome');
+    const tREl = document.getElementById('tRMultiple');
+    const tPnlEl = document.getElementById('tPnl');
+    tOutcomeEl.addEventListener('change', () => {
+      if (tOutcomeEl.value === 'SL') {
+        tREl.value = '-1R';
+        tREl.readOnly = true;
+        if (parseFloat(tPnlEl.value) > 0) tPnlEl.value = -Math.abs(parseFloat(tPnlEl.value));
+      } else if (tOutcomeEl.value === 'BE') {
+        tREl.value = '0R';
+        tREl.readOnly = true;
+        tPnlEl.value = '0';
+      } else {
+        tREl.readOnly = false;
+        if (tREl.value === '-1R' || tREl.value === '0R') tREl.value = '+2R';
+        if (parseFloat(tPnlEl.value) < 0) tPnlEl.value = Math.abs(parseFloat(tPnlEl.value));
+      }
+    });
+
+    document.getElementById('modeDollarBtn').addEventListener('click', () => {
+      state.displayMode = '$';
+      document.getElementById('modeDollarBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white';
+      document.getElementById('modePercentBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold theme-sub';
+      renderAll();
+    });
+    document.getElementById('modePercentBtn').addEventListener('click', () => {
+      state.displayMode = '%';
+      document.getElementById('modePercentBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white';
+      document.getElementById('modeDollarBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold theme-sub';
+      renderAll();
+    });
+
+    document.getElementById('askAiBtn').addEventListener('click', () => {
+      const m = computeMetrics(getFilteredTrades());
+      document.getElementById('aiResponseBox').textContent = `Your EdgeZella Score is ${m.edgeScore}/100 with a ${m.winRate.toFixed(1)}% win rate and ${m.profitFactor.toFixed(2)} Profit Factor. Pick a quick question below!`;
+      document.getElementById('aiModal').classList.remove('hidden');
+    });
+    document.getElementById('closeAiModalBtn').addEventListener('click', () => document.getElementById('aiModal').classList.add('hidden'));
+    document.querySelectorAll('.ai-prompt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const m = computeMetrics(getFilteredTrades());
+        const q = btn.dataset.q;
+        const box = document.getElementById('aiResponseBox');
+        if (q === 'edge') box.textContent = `Edge Analysis: Net P&L is ${fmtMoney(m.netPnl)} across ${m.total} trades. Expectancy is ${fmtMoney(m.expectancy)}/trade with a ${m.avgRatio.toFixed(2)} Avg Win/Loss ratio.`;
+        else if (q === 'best') box.textContent = `Best Day was ${fmtMoney(m.bestDay)}. Stick to your highest win-rate setups in Playbook and avoid overtrading on choppy days.`;
+        else box.textContent = `Risk Check: Max Balance Drawdown is -${m.maxDdPct.toFixed(2)}%. Keep risk capped at 1% per trade to protect your ${fmtMoney(getBaseBalance() + m.netPnl)} equity.`;
+      });
+    });
+
+    document.getElementById('startDayBtn').addEventListener('click', () => document.getElementById('startDayModal').classList.remove('hidden'));
+    document.getElementById('closeStartDayBtn').addEventListener('click', () => document.getElementById('startDayModal').classList.add('hidden'));
+    document.getElementById('confirmStartDayBtn').addEventListener('click', () => {
+      document.getElementById('startDayModal').classList.add('hidden');
+      showToast('Pre-session routine complete. Trade disciplined!');
+    });
+
+    document.getElementById('addTradeForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newTrade = {
+        id: 't_' + Date.now(),
+        date: document.getElementById('tDate').value,
+        symbol: document.getElementById('tSymbol').value.trim().toUpperCase(),
+        side: document.getElementById('tSide').value,
+        outcome: document.getElementById('tOutcome').value,
+        rMultiple: document.getElementById('tRMultiple').value.trim() || '0R',
+        entry: 0,
+        exit: 0,
+        pnl: parseFloat(document.getElementById('tPnl').value) || 0,
+        strategy: document.getElementById('tStrategy').value.trim() || 'Discretionary',
+        notes: document.getElementById('tNotes').value.trim()
+      };
+      state.trades.push(newTrade);
+      saveState();
+      closeAddModal();
+      e.target.reset();
+      renderAll();
+      showToast(`Added ${newTrade.symbol} (${fmtMoney(newTrade.pnl)})`);
+    });
+
+    function shiftMonth(delta) {
+      state.calMonth += delta;
+      if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
+      if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+      renderCalendar(computeMetrics(getFilteredTrades()));
+    }
+    document.getElementById('prevMonthBtn').addEventListener('click', () => shiftMonth(-1));
+    document.getElementById('nextMonthBtn').addEventListener('click', () => shiftMonth(1));
+    document.getElementById('fullPrevMonthBtn').addEventListener('click', () => shiftMonth(-1));
+    document.getElementById('fullNextMonthBtn').addEventListener('click', () => shiftMonth(1));
+    document.getElementById('thisMonthBtn').addEventListener('click', () => {
+      state.calYear = 2026; state.calMonth = 10;
+      renderCalendar(computeMetrics(getFilteredTrades()));
+    });
+
+    document.getElementById('rangeFilter').addEventListener('change', (e) => { state.rangeFilter = e.target.value; renderAll(); });
+    document.getElementById('symbolFilter').addEventListener('change', (e) => { state.symbolFilter = e.target.value; renderAll(); });
+    document.getElementById('strategyFilter').addEventListener('change', (e) => { state.strategyFilter = e.target.value; renderAll(); });
+    document.getElementById('tradeSearchInput').addEventListener('input', () => renderAllTrades(getFilteredTrades()));
+    document.getElementById('dayViewDateInput').addEventListener('change', (e) => renderDayView(e.target.value));
+
+    document.getElementById('saveNoteBtn').addEventListener('click', () => {
+      const title = document.getElementById('noteTitle').value.trim();
+      const body = document.getElementById('noteBody').value.trim();
+      const date = document.getElementById('noteDate').value || new Date().toISOString().slice(0, 10);
+      const mood = document.getElementById('noteMood').value;
+      if (!title || !body) { showToast('Please enter title & note'); return; }
+      state.notes.push({ id: 'n_' + Date.now(), title, body, date, mood });
+      saveState();
+      document.getElementById('noteTitle').value = '';
+      document.getElementById('noteBody').value = '';
+      renderNotes();
+      renderCalendar(computeMetrics(getFilteredTrades()));
+      showToast('Journal note saved');
+    });
+
+    document.getElementById('addPlaybookBtn').addEventListener('click', () => {
+      const name = document.getElementById('playbookName').value.trim();
+      const rules = document.getElementById('playbookRules').value.trim();
+      if (!name || !rules) { showToast('Enter setup name & rules'); return; }
+      state.playbook.push({ id: 'p_' + Date.now(), name, rules });
+      saveState();
+      document.getElementById('playbookName').value = '';
+      document.getElementById('playbookRules').value = '';
+      renderPlaybook();
+      showToast('Setup added to Playbook');
+    });
+
+    document.getElementById('replayTradeSelect').addEventListener('change', () => { clearInterval(replayTimer); drawReplay(0); });
+    document.getElementById('replayResetBtn').addEventListener('click', () => { clearInterval(replayTimer); drawReplay(0); });
+
     document.getElementById('exportCsvBtn').addEventListener('click', () => {
       const header = 'date,symbol,side,entry,exit,pnl,strategy,notes\n';
       const rows = state.trades.map(t => `${t.date},${t.symbol},${t.side},${t.entry},${t.exit},${t.pnl},"${(t.strategy||'').replace(/"/g,'""')}","${(t.notes||'').replace(/"/g,'""')}"`).join('\n');
