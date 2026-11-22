@@ -1931,28 +1931,67 @@
 
     function drawReplay(step) {
       const id = document.getElementById('replayTradeSelect').value;
-      const t = state.trades.find(x => x.id === id) || state.trades[0];
+      const t = state.trades.find(x => String(x.id) === String(id)) || state.trades[0];
       if (!t) return;
       const entry = t.entry || 100;
       const exit = t.exit || (t.pnl >= 0 ? entry * 1.01 : entry * 0.99);
-      const diff = exit - entry;
-      const fullSeries = [entry * 0.999, entry, entry + diff * 0.15, entry - diff * 0.1, entry + diff * 0.4, entry + diff * 0.35, entry + diff * 0.7, entry + diff * 0.85, exit];
-      const shown = step > 0 ? fullSeries.slice(0, step) : fullSeries;
-
+      const diff = exit - entry || (t.pnl >= 0 ? 1 : -1);
+      const stepPts = [
+        entry - diff * 0.12, entry, entry + diff * 0.18, entry + diff * 0.08,
+        entry + diff * 0.42, entry + diff * 0.34, entry + diff * 0.68, entry + diff * 0.86, exit
+      ];
+      const candles = [];
+      for (let i = 0; i < stepPts.length - 1; i++) {
+        const o = stepPts[i], c = stepPts[i + 1];
+        const pad = Math.abs(diff) * 0.08 + 0.0001;
+        candles.push({ o, c, h: Math.max(o, c) + pad, l: Math.min(o, c) - pad });
+      }
+      const shown = step > 0 ? candles.slice(0, Math.min(step, candles.length)) : candles;
       const isLight = state.theme === 'light';
       const gridColor = isLight ? '#E2E8F0' : '#1E2536';
       const tickColor = isLight ? '#64748B' : '#6B7280';
 
+      const wickPlugin = {
+        id: 'candleWicks',
+        afterDatasetsDraw(chart) {
+          const { ctx, scales: { y } } = chart;
+          const meta = chart.getDatasetMeta(0);
+          ctx.save();
+          meta.data.forEach((bar, i) => {
+            const c = shown[i];
+            if (!c) return;
+            ctx.strokeStyle = c.c >= c.o ? '#10B981' : '#EF4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(bar.x, y.getPixelForValue(c.h));
+            ctx.lineTo(bar.x, y.getPixelForValue(c.l));
+            ctx.stroke();
+          });
+          ctx.restore();
+        }
+      };
+
       destroyChart('replay');
       charts.replay = new Chart(document.getElementById('replayChart'), {
-        type: 'line',
+        type: 'bar',
+        plugins: [wickPlugin],
         data: {
-          labels: shown.map((_, i) => `Bar ${i + 1}`),
-          datasets: [{ label: t.symbol, data: shown, borderColor: t.pnl >= 0 ? '#10B981' : '#EF4444', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0.25, pointRadius: 4 }]
+          labels: shown.map((_, i) => `Candle ${i + 1}`),
+          datasets: [{
+            label: t.symbol,
+            data: shown.map(c => [c.o, c.c]),
+            backgroundColor: shown.map(c => c.c >= c.o ? '#10B981' : '#EF4444'),
+            borderRadius: 2,
+            barPercentage: 0.55
+          }]
         },
         options: {
-          responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-          scales: { x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } } }
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } },
+            y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } }
+          }
         }
       });
       document.getElementById('replayInfo').innerHTML = `
@@ -2245,7 +2284,7 @@
       clearInterval(replayTimer);
       let step = 1;
       drawReplay(step);
-      replayTimer = setInterval(() => { step++; drawReplay(step); if (step >= 9) clearInterval(replayTimer); }, 450);
+      replayTimer = setInterval(() => { step++; drawReplay(step); if (step >= 8) clearInterval(replayTimer); }, 450);
     });
 
     document.getElementById('exportCsvBtn').addEventListener('click', () => {
@@ -2332,7 +2371,8 @@
               date: parseExnessDate(cols[idxTime]),
               symbol: sym,
               side: (rawSide.includes('sell') || rawSide.includes('short')) ? 'SHORT' : 'LONG',
-              entry: 0, exit: 0,
+              entry: (() => { const i = headers.findIndex(h => h.includes('opening_price') || h.includes('opening price')); return i >= 0 ? cleanNum(cols[i]) : 0; })(),
+              exit: (() => { const i = headers.findIndex(h => h.includes('closing_price') || h.includes('closing price')); return i >= 0 ? cleanNum(cols[i]) : 0; })(),
               pnl: Number(pnlVal.toFixed(2)),
               outcome: outcome,
               rMultiple: outcome === 'SL' ? '-1R' : (outcome === 'BE' ? '0R' : '+1R'),
