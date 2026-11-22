@@ -1925,13 +1925,17 @@
 
     function renderReplaySelect(trades) {
       const sel = document.getElementById('replayTradeSelect');
-      sel.innerHTML = trades.map(t => `<option value="${t.id}">${t.date} • ${t.symbol} (${t.side}) ${fmtMoney(t.pnl)}</option>`).join('');
+      const prevIdx = sel.selectedIndex >= 0 ? sel.selectedIndex : 0;
+      window._replayTrades = trades;
+      sel.innerHTML = trades.map((t, i) => `<option value="${i}">${t.date} • ${t.symbol} (${t.side}) ${fmtMoney(t.pnl)}</option>`).join('');
+      if (trades.length) sel.selectedIndex = Math.min(prevIdx, trades.length - 1);
       drawReplay(0);
     }
 
     function drawReplay(step) {
-      const id = document.getElementById('replayTradeSelect').value;
-      const t = state.trades.find(x => String(x.id) === String(id)) || state.trades[0];
+      const sel = document.getElementById('replayTradeSelect');
+      const list = window._replayTrades && window._replayTrades.length ? window._replayTrades : state.trades;
+      const t = list[sel.selectedIndex >= 0 ? sel.selectedIndex : 0] || list[0];
       if (!t) return;
       const entry = t.entry || 100;
       const exit = t.exit || (t.pnl >= 0 ? entry * 1.01 : entry * 0.99);
@@ -1941,11 +1945,16 @@
         entry + diff * 0.42, entry + diff * 0.34, entry + diff * 0.68, entry + diff * 0.86, exit
       ];
       const candles = [];
+      const pad = Math.abs(diff) * 0.12 + 0.0001;
       for (let i = 0; i < stepPts.length - 1; i++) {
         const o = stepPts[i], c = stepPts[i + 1];
-        const pad = Math.abs(diff) * 0.08 + 0.0001;
         candles.push({ o, c, h: Math.max(o, c) + pad, l: Math.min(o, c) - pad });
       }
+      const allLows = candles.map(c => c.l);
+      const allHighs = candles.map(c => c.h);
+      const yMin = Math.min(...allLows) - pad;
+      const yMax = Math.max(...allHighs) + pad;
+
       const shown = step > 0 ? candles.slice(0, Math.min(step, candles.length)) : candles;
       const isLight = state.theme === 'light';
       const gridColor = isLight ? '#E2E8F0' : '#1E2536';
@@ -1982,7 +1991,7 @@
             data: shown.map(c => [c.o, c.c]),
             backgroundColor: shown.map(c => c.c >= c.o ? '#10B981' : '#EF4444'),
             borderRadius: 2,
-            barPercentage: 0.55
+            barPercentage: 0.5
           }]
         },
         options: {
@@ -1990,7 +1999,7 @@
           plugins: { legend: { display: false } },
           scales: {
             x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } },
-            y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } }
+            y: { beginAtZero: false, min: yMin, max: yMax, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } }
           }
         }
       });
