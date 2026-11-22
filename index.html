@@ -116,6 +116,7 @@
     .reveal.visible { opacity: 1; transform: translateY(0); }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body class="min-h-screen">
   <!-- ================= LANDING PAGE VIEW ================= -->
@@ -1118,8 +1119,10 @@
           <button id="replayResetBtn" class="px-3 py-1.5 rounded-lg theme-card border theme-border text-xs theme-text">Reset</button>
         </div>
       </div>
-      <div class="relative h-64">
-        <canvas id="replayChart"></canvas>
+      <div id="tvReplayContainer" class="w-full h-80 rounded-xl overflow-hidden border theme-border"></div>
+      <div class="text-[11px] theme-sub flex items-center justify-between">
+        <span>Scroll mouse wheel / pinch to Zoom In &amp; Out • Drag to Pan</span>
+        <span class="text-indigo-400 font-semibold">TradingView Bar Replay Engine</span>
       </div>
       <div id="replayInfo" class="text-xs theme-sub flex flex-wrap gap-4"></div>
     </section>
@@ -1938,114 +1941,112 @@
     }
 
     let replayTf = '1m';
+    let tvChart = null;
+    let tvSeries = null;
+    let tvCandlesAll = [];
+
     function buildReplayCandles(t, count) {
       const entry = t.entry || 100;
       const exit = t.exit || (t.pnl >= 0 ? entry * 1.01 : entry * 0.99);
       const diff = exit - entry || (t.pnl >= 0 ? 1 : -1);
       const candles = [];
-      let prev = entry - diff * 0.08;
-      // Deterministic pseudo-random wave based on trade price
-      let seed = Math.abs(Math.round((entry + exit) * 100)) + 17;
+      let prev = entry - diff * 0.15;
+      let seed = Math.abs(Math.round((entry + exit) * 100)) + 42;
       const nextRand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
 
+      const baseTime = Math.floor(new Date((t.date || '2026-11-17') + 'T09:30:00Z').getTime() / 1000);
+      const tfSec = replayTf === '1m' ? 60 : (replayTf === '5m' ? 300 : 900);
+      const entryIdx = Math.floor(count * 0.22);
+
       for (let i = 0; i < count; i++) {
-        const progress = (i + 1) / count;
-        const target = (entry - diff * 0.08) + (diff * 1.08) * progress;
-        const wave = (nextRand() - 0.46) * Math.abs(diff) * 0.16;
-        const close = i === count - 1 ? exit : (i === 2 ? entry : target + wave);
+        let target;
+        if (i < entryIdx) {
+          target = (entry - diff * 0.15) + Math.sin(i * 0.6) * Math.abs(diff) * 0.12;
+        } else {
+          const p = (i - entryIdx + 1) / (count - entryIdx);
+          target = entry + diff * p + Math.sin(i * 0.7) * Math.abs(diff) * 0.08;
+        }
+        const wave = (nextRand() - 0.48) * Math.abs(diff) * 0.10;
+        const close = i === count - 1 ? exit : (i === entryIdx ? entry : target + wave);
         const open = prev;
         const body = Math.abs(close - open);
-        const wickUp = body * (0.3 + nextRand() * 0.9) + Math.abs(diff) * 0.015;
-        const wickDn = body * (0.3 + nextRand() * 0.9) + Math.abs(diff) * 0.015;
+        const wickUp = body * (0.25 + nextRand() * 0.85) + Math.abs(diff) * 0.008;
+        const wickDn = body * (0.25 + nextRand() * 0.85) + Math.abs(diff) * 0.008;
         candles.push({
-          o: open,
-          c: close,
-          h: Math.max(open, close) + wickUp,
-          l: Math.min(open, close) - wickDn
+          time: baseTime + i * tfSec,
+          open: Number(open.toFixed(5)),
+          high: Number((Math.max(open, close) + wickUp).toFixed(5)),
+          low: Number((Math.min(open, close) - wickDn).toFixed(5)),
+          close: Number(close.toFixed(5))
         });
         prev = close;
       }
-      return { candles, entry, exit };
+      return { candles, entry, exit, entryIdx };
     }
 
-    function drawReplay(step) {
-      const sel = document.getElementById('replayTradeSelect');
-      const list = window._replayTrades && window._replayTrades.length ? window._replayTrades : state.trades;
-      const t = list[sel.selectedIndex >= 0 ? sel.selectedIndex : 0] || list[0];
-      if (!t) return;
+    function initTvReplayChart(t, showCount) {
+      const container = document.getElementById('tvReplayContainer');
+      if (!container || !window.LightweightCharts) return;
+      container.innerHTML = '';
 
-      const count = replayTf === '1m' ? 36 : (replayTf === '5m' ? 22 : 12);
-      const { candles, entry, exit } = buildReplayCandles(t, count);
-      const pad = Math.abs(exit - entry || 1) * 0.14;
-      const yMin = Math.min(...candles.map(c => c.l)) - pad;
-      const yMax = Math.max(...candles.map(c => c.h)) + pad;
-      const shown = step > 0 ? candles.slice(0, Math.min(step, candles.length)) : candles;
+      const count = replayTf === '1m' ? 83 : (replayTf === '5m' ? 70 : 60);
+      const { candles, entry, exit, entryIdx } = buildReplayCandles(t, count);
+      tvCandlesAll = candles;
 
       const isLight = state.theme === 'light';
-      const gridColor = isLight ? '#E2E8F0' : '#1E2536';
-      const tickColor = isLight ? '#64748B' : '#6B7280';
-
-      const tvPlugin = {
-        id: 'tvCandles',
-        afterDatasetsDraw(chart) {
-          const { ctx, chartArea: { left, right }, scales: { y } } = chart;
-          const meta = chart.getDatasetMeta(0);
-          ctx.save();
-          // Entry & Exit dashed levels
-          const drawLevel = (val, color, label) => {
-            const py = y.getPixelForValue(val);
-            ctx.setLineDash([4, 4]);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(left, py); ctx.lineTo(right, py); ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = color;
-            ctx.font = '600 10px Inter, sans-serif';
-            ctx.fillText(label, left + 6, py - 4);
-          };
-          drawLevel(entry, '#818CF8', `Entry ${entry}`);
-          drawLevel(exit, t.pnl >= 0 ? '#10B981' : '#EF4444', `Exit ${exit}`);
-
-          // Wicks
-          meta.data.forEach((bar, i) => {
-            const c = shown[i];
-            if (!c) return;
-            ctx.strokeStyle = c.c >= c.o ? '#10B981' : '#EF4444';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.moveTo(bar.x, y.getPixelForValue(c.h));
-            ctx.lineTo(bar.x, y.getPixelForValue(c.l));
-            ctx.stroke();
-          });
-          ctx.restore();
-        }
-      };
-
-      destroyChart('replay');
-      charts.replay = new Chart(document.getElementById('replayChart'), {
-        type: 'bar',
-        plugins: [tvPlugin],
-        data: {
-          labels: shown.map((_, i) => `${i + 1}`),
-          datasets: [{
-            label: t.symbol,
-            data: shown.map(c => [c.o, c.c]),
-            backgroundColor: shown.map(c => c.c >= c.o ? '#10B981' : '#EF4444'),
-            borderRadius: 1,
-            barPercentage: 0.72,
-            categoryPercentage: 0.85
-          }]
+      tvChart = LightweightCharts.createChart(container, {
+        width: container.clientWidth || 700,
+        height: 320,
+        layout: {
+          background: { type: 'solid', color: isLight ? '#FFFFFF' : '#0B0E17' },
+          textColor: isLight ? '#334155' : '#9CA3AF'
         },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          animation: { duration: 120 },
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 9 }, maxTicksLimit: 12 } },
-            y: { beginAtZero: false, min: yMin, max: yMax, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } }
-          }
-        }
+        grid: {
+          vertLines: { color: isLight ? '#F1F5F9' : '#161B28' },
+          horzLines: { color: isLight ? '#F1F5F9' : '#161B28' }
+        },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: isLight ? '#E2E8F0' : '#1E2536' },
+        timeScale: { borderColor: isLight ? '#E2E8F0' : '#1E2536', timeVisible: true }
       });
+
+      tvSeries = tvChart.addCandlestickSeries({
+        upColor: '#10B981',
+        downColor: '#EF4444',
+        borderUpColor: '#10B981',
+        borderDownColor: '#EF4444',
+        wickUpColor: '#10B981',
+        wickDownColor: '#EF4444'
+      });
+
+      const initialSlice = showCount > 0 ? candles.slice(0, showCount) : candles;
+      tvSeries.setData(initialSlice);
+
+      tvSeries.createPriceLine({ price: entry, color: '#818CF8', lineWidth: 1, lineStyle: 2, title: 'Entry' });
+      tvSeries.createPriceLine({ price: exit, color: t.pnl >= 0 ? '#10B981' : '#EF4444', lineWidth: 1, lineStyle: 2, title: 'Exit' });
+
+      const markers = [];
+      if (initialSlice.length > entryIdx) {
+        markers.push({
+          time: candles[entryIdx].time,
+          position: t.side === 'LONG' ? 'belowBar' : 'aboveBar',
+          color: '#818CF8',
+          shape: t.side === 'LONG' ? 'arrowUp' : 'arrowDown',
+          text: `${t.side} @ ${entry}`
+        });
+      }
+      if (initialSlice.length === candles.length) {
+        markers.push({
+          time: candles[candles.length - 1].time,
+          position: t.pnl >= 0 ? 'aboveBar' : 'belowBar',
+          color: t.pnl >= 0 ? '#10B981' : '#EF4444',
+          shape: 'circle',
+          text: `${fmtMoney(t.pnl)}`
+        });
+      }
+      tvSeries.setMarkers(markers);
+      tvChart.timeScale().fitContent();
+
       document.getElementById('replayInfo').innerHTML = `
         <span>Symbol: <strong class="theme-text">${t.symbol}</strong></span>
         <span>Timeframe: <strong class="text-indigo-400">${replayTf} (${count} candles)</strong></span>
@@ -2056,283 +2057,21 @@
       `;
     }
 
-    function renderProgress() {
-      document.getElementById('rulesChecklist').innerHTML = state.rules.map(r => `
-        <label class="flex items-center gap-2.5 p-2.5 rounded-lg theme-card border theme-border cursor-pointer text-xs">
-          <input type="checkbox" ${r.done ? 'checked' : ''} onchange="toggleRule('${r.id}')" class="accent-indigo-500" />
-          <span class="${r.done ? 'line-through theme-muted' : 'theme-text'}">${r.text}</span>
-        </label>
-      `).join('');
-
-      const doneCount = state.rules.filter(r => r.done).length;
-      const pct = state.rules.length ? Math.round((doneCount / state.rules.length) * 100) : 0;
-      document.getElementById('milestonesList').innerHTML = `
-        <div class="p-3 rounded-lg theme-card border theme-border">
-          <div class="flex justify-between mb-1"><span class="theme-sub">Daily Rule Adherence</span><span class="font-bold text-indigo-400">${pct}%</span></div>
-          <div class="w-full h-2 rounded-full theme-panel"><div class="h-2 rounded-full bg-indigo-500" style="width:${pct}%"></div></div>
-        </div>
-        <div class="p-3 rounded-lg theme-card border theme-border flex justify-between">
-          <span class="theme-sub">Journaled Notes</span>
-          <span class="font-bold text-emerald-500">${state.notes.length} entries</span>
-        </div>
-        <div class="p-3 rounded-lg theme-card border theme-border flex justify-between">
-          <span class="theme-sub">Playbook Setups Defined</span>
-          <span class="font-bold theme-text">${state.playbook.length} setups</span>
-        </div>
-      `;
+    function drawReplay(step) {
+      const sel = document.getElementById('replayTradeSelect');
+      const list = window._replayTrades && window._replayTrades.length ? window._replayTrades : state.trades;
+      const t = list[sel.selectedIndex >= 0 ? sel.selectedIndex : 0] || list[0];
+      if (!t) return;
+      initTvReplayChart(t, step);
     }
 
-    function renderAiInsights(m, trades) {
-      const symMap = {};
-      for (const t of trades) symMap[t.symbol] = (symMap[t.symbol] || 0) + t.pnl;
-      const bestSym = Object.entries(symMap).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
-      const worstSym = Object.entries(symMap).sort((a, b) => a[1] - b[1])[0] || ['N/A', 0];
-
-      document.getElementById('aiInsightsGrid').innerHTML = `
-        <div class="p-3.5 rounded-lg theme-card border border-emerald-500/30 space-y-1">
-          <div class="text-[11px] font-bold text-emerald-500 uppercase">Top Performing Asset</div>
-          <div class="text-base font-bold theme-text">${bestSym[0]} (${fmtMoney(bestSym[1])})</div>
-          <p class="text-xs theme-sub">Focus your A+ size on ${bestSym[0]} where your edge is strongest.</p>
-        </div>
-        <div class="p-3.5 rounded-lg theme-card border border-indigo-500/30 space-y-1">
-          <div class="text-[11px] font-bold text-indigo-400 uppercase">Expectancy &amp; Edge</div>
-          <div class="text-base font-bold theme-text">${fmtMoney(m.expectancy)} / trade</div>
-          <p class="text-xs theme-sub">Profit Factor of ${m.profitFactor.toFixed(2)} with ${m.winRate.toFixed(1)}% win rate.</p>
-        </div>
-        <div class="p-3.5 rounded-lg theme-card border border-rose-500/30 space-y-1">
-          <div class="text-[11px] font-bold text-rose-500 uppercase">Leak to Watch</div>
-          <div class="text-base font-bold theme-text">${worstSym[0]} (${fmtMoney(worstSym[1])})</div>
-          <p class="text-xs theme-sub">Review losing setups on ${worstSym[0]} and tighten entry rules.</p>
-        </div>
-      `;
-    }
-
-    function renderAll() {
-      populateFilters();
-      const trades = getFilteredTrades();
-      const m = computeMetrics(trades);
-      renderKPIs(m);
-      renderCharts(m);
-      renderCalendar(m);
-      renderRecentTrades(trades);
-      renderAllTrades(trades);
-      renderDayView();
-      renderNotes();
-      renderReports(trades);
-      renderPlaybook();
-      renderReplaySelect(trades);
-      renderProgress();
-      renderAiInsights(m, trades);
-    }
-
-    window.openDayDetail = function(dateStr) { switchTab('dayview'); renderDayView(dateStr); };
-    window.deleteTrade = function(id) { state.trades = state.trades.filter(t => t.id !== id); saveState(); renderAll(); showToast('Trade deleted'); };
-    window.deleteNote = function(id) { state.notes = state.notes.filter(n => n.id !== id); saveState(); renderNotes(); renderCalendar(computeMetrics(getFilteredTrades())); showToast('Note deleted'); };
-    window.deletePlaybook = function(id) { state.playbook = state.playbook.filter(p => p.id !== id); saveState(); renderPlaybook(); showToast('Setup removed'); };
-    window.toggleRule = function(id) { const r = state.rules.find(x => x.id === id); if (r) r.done = !r.done; saveState(); renderProgress(); };
-
-    function switchTab(tab) {
-      const titles = {
-        dashboard: 'Dashboard', calendar: 'Trading Calendar', dayview: 'Day View', trades: 'Trade View',
-        notebook: 'Notebook', reports: 'Reports', playbook: 'Playbook',
-        replay: 'Trade Replay', progress: 'Progress Tracker', insights: 'AI Insights', calculator: 'Risk Calculator'
-      };
-      document.getElementById('pageTitle').textContent = titles[tab] || 'Dashboard';
-      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-      document.getElementById(`tab-${tab}`).classList.remove('hidden');
-
-      document.querySelectorAll('.nav-btn').forEach(btn => {
-        const active = btn.dataset.tab === tab;
-        btn.className = active
-          ? 'nav-btn w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-          : 'nav-btn w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5';
-      });
-      if (window.innerWidth < 1024) document.getElementById('sidebar').classList.add('hidden');
-    }
-
-    function openAddModal() {
-      document.getElementById('tDate').value = new Date().toISOString().slice(0, 10);
-      document.getElementById('addTradeModal').classList.remove('hidden');
-    }
-    function closeAddModal() { document.getElementById('addTradeModal').classList.add('hidden'); }
-
-    function toggleTheme() {
-      state.theme = state.theme === 'dark' ? 'light' : 'dark';
-      saveState();
-      applyTheme();
-      renderCharts(computeMetrics(getFilteredTrades()));
-      drawReplay(0);
-      showToast(`Switched to ${state.theme === 'light' ? 'Light' : 'Dark'} Mode`);
-    }
-
-    // Listeners
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
-    document.querySelectorAll('[data-goto]').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.goto)));
-
-    document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
-    document.getElementById('mobileThemeBtn').addEventListener('click', toggleTheme);
-
-    document.getElementById('recentTabBtn').addEventListener('click', () => {
-      document.getElementById('recentTradesPanel').classList.remove('hidden');
-      document.getElementById('openPosPanel').classList.add('hidden');
-      document.getElementById('recentTabBtn').className = 'text-xs font-bold text-indigo-400 border-b-2 border-indigo-500 pb-1';
-      document.getElementById('openPosTabBtn').className = 'text-xs font-medium theme-sub pb-1';
-    });
-    document.getElementById('openPosTabBtn').addEventListener('click', () => {
-      document.getElementById('recentTradesPanel').classList.add('hidden');
-      document.getElementById('openPosPanel').classList.remove('hidden');
-      document.getElementById('openPosTabBtn').className = 'text-xs font-bold text-indigo-400 border-b-2 border-indigo-500 pb-1';
-      document.getElementById('recentTabBtn').className = 'text-xs font-medium theme-sub pb-1';
-    });
-
-    document.getElementById('sidebarAddTradeBtn').addEventListener('click', openAddModal);
-    document.getElementById('mobileAddTradeBtn').addEventListener('click', openAddModal);
-    document.getElementById('closeModalBtn').addEventListener('click', closeAddModal);
-    document.getElementById('cancelModalBtn').addEventListener('click', closeAddModal);
-
-    document.getElementById('mobileMenuBtn').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.remove('hidden');
-      document.getElementById('sidebar').classList.add('flex');
-    });
-    document.getElementById('closeSidebarBtn').addEventListener('click', () => document.getElementById('sidebar').classList.add('hidden'));
-
-    document.getElementById('saveBalanceBtn').addEventListener('click', () => {
-      const val = parseFloat(document.getElementById('startingBalanceInput').value);
-      state.startingBalance = isNaN(val) || val < 0 ? 0 : val;
-      saveState();
-      renderAll();
-      showToast(`Starting balance set to ${fmtMoney(state.startingBalance)}`);
-    });
-
-    const tOutcomeEl = document.getElementById('tOutcome');
-    const tREl = document.getElementById('tRMultiple');
-    const tPnlEl = document.getElementById('tPnl');
-    tOutcomeEl.addEventListener('change', () => {
-      if (tOutcomeEl.value === 'SL') {
-        tREl.value = '-1R';
-        tREl.readOnly = true;
-        if (parseFloat(tPnlEl.value) > 0) tPnlEl.value = -Math.abs(parseFloat(tPnlEl.value));
-      } else if (tOutcomeEl.value === 'BE') {
-        tREl.value = '0R';
-        tREl.readOnly = true;
-        tPnlEl.value = '0';
-      } else {
-        tREl.readOnly = false;
-        if (tREl.value === '-1R' || tREl.value === '0R') tREl.value = '+2R';
-        if (parseFloat(tPnlEl.value) < 0) tPnlEl.value = Math.abs(parseFloat(tPnlEl.value));
+    window.addEventListener('resize', () => {
+      const container = document.getElementById('tvReplayContainer');
+      if (tvChart && container && container.clientWidth > 0) {
+        tvChart.applyOptions({ width: container.clientWidth });
       }
     });
 
-    document.getElementById('modeDollarBtn').addEventListener('click', () => {
-      state.displayMode = '$';
-      document.getElementById('modeDollarBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white';
-      document.getElementById('modePercentBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold theme-sub';
-      renderAll();
-    });
-    document.getElementById('modePercentBtn').addEventListener('click', () => {
-      state.displayMode = '%';
-      document.getElementById('modePercentBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white';
-      document.getElementById('modeDollarBtn').className = 'px-2.5 py-1 rounded-md text-xs font-semibold theme-sub';
-      renderAll();
-    });
-
-    document.getElementById('askAiBtn').addEventListener('click', () => {
-      const m = computeMetrics(getFilteredTrades());
-      document.getElementById('aiResponseBox').textContent = `Your EdgeZella Score is ${m.edgeScore}/100 with a ${m.winRate.toFixed(1)}% win rate and ${m.profitFactor.toFixed(2)} Profit Factor. Pick a quick question below!`;
-      document.getElementById('aiModal').classList.remove('hidden');
-    });
-    document.getElementById('closeAiModalBtn').addEventListener('click', () => document.getElementById('aiModal').classList.add('hidden'));
-    document.querySelectorAll('.ai-prompt-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const m = computeMetrics(getFilteredTrades());
-        const q = btn.dataset.q;
-        const box = document.getElementById('aiResponseBox');
-        if (q === 'edge') box.textContent = `Edge Analysis: Net P&L is ${fmtMoney(m.netPnl)} across ${m.total} trades. Expectancy is ${fmtMoney(m.expectancy)}/trade with a ${m.avgRatio.toFixed(2)} Avg Win/Loss ratio.`;
-        else if (q === 'best') box.textContent = `Best Day was ${fmtMoney(m.bestDay)}. Stick to your highest win-rate setups in Playbook and avoid overtrading on choppy days.`;
-        else box.textContent = `Risk Check: Max Balance Drawdown is -${m.maxDdPct.toFixed(2)}%. Keep risk capped at 1% per trade to protect your ${fmtMoney(getBaseBalance() + m.netPnl)} equity.`;
-      });
-    });
-
-    document.getElementById('startDayBtn').addEventListener('click', () => document.getElementById('startDayModal').classList.remove('hidden'));
-    document.getElementById('closeStartDayBtn').addEventListener('click', () => document.getElementById('startDayModal').classList.add('hidden'));
-    document.getElementById('confirmStartDayBtn').addEventListener('click', () => {
-      document.getElementById('startDayModal').classList.add('hidden');
-      showToast('Pre-session routine complete. Trade disciplined!');
-    });
-
-    document.getElementById('addTradeForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const newTrade = {
-        id: 't_' + Date.now(),
-        date: document.getElementById('tDate').value,
-        symbol: document.getElementById('tSymbol').value.trim().toUpperCase(),
-        side: document.getElementById('tSide').value,
-        outcome: document.getElementById('tOutcome').value,
-        rMultiple: document.getElementById('tRMultiple').value.trim() || '0R',
-        entry: 0,
-        exit: 0,
-        pnl: parseFloat(document.getElementById('tPnl').value) || 0,
-        strategy: document.getElementById('tStrategy').value.trim() || 'Discretionary',
-        notes: document.getElementById('tNotes').value.trim()
-      };
-      state.trades.push(newTrade);
-      saveState();
-      closeAddModal();
-      e.target.reset();
-      renderAll();
-      showToast(`Added ${newTrade.symbol} (${fmtMoney(newTrade.pnl)})`);
-    });
-
-    function shiftMonth(delta) {
-      state.calMonth += delta;
-      if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
-      if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
-      renderCalendar(computeMetrics(getFilteredTrades()));
-    }
-    document.getElementById('prevMonthBtn').addEventListener('click', () => shiftMonth(-1));
-    document.getElementById('nextMonthBtn').addEventListener('click', () => shiftMonth(1));
-    document.getElementById('fullPrevMonthBtn').addEventListener('click', () => shiftMonth(-1));
-    document.getElementById('fullNextMonthBtn').addEventListener('click', () => shiftMonth(1));
-    document.getElementById('thisMonthBtn').addEventListener('click', () => {
-      state.calYear = 2026; state.calMonth = 10;
-      renderCalendar(computeMetrics(getFilteredTrades()));
-    });
-
-    document.getElementById('rangeFilter').addEventListener('change', (e) => { state.rangeFilter = e.target.value; renderAll(); });
-    document.getElementById('symbolFilter').addEventListener('change', (e) => { state.symbolFilter = e.target.value; renderAll(); });
-    document.getElementById('strategyFilter').addEventListener('change', (e) => { state.strategyFilter = e.target.value; renderAll(); });
-    document.getElementById('tradeSearchInput').addEventListener('input', () => renderAllTrades(getFilteredTrades()));
-    document.getElementById('dayViewDateInput').addEventListener('change', (e) => renderDayView(e.target.value));
-
-    document.getElementById('saveNoteBtn').addEventListener('click', () => {
-      const title = document.getElementById('noteTitle').value.trim();
-      const body = document.getElementById('noteBody').value.trim();
-      const date = document.getElementById('noteDate').value || new Date().toISOString().slice(0, 10);
-      const mood = document.getElementById('noteMood').value;
-      if (!title || !body) { showToast('Please enter title & note'); return; }
-      state.notes.push({ id: 'n_' + Date.now(), title, body, date, mood });
-      saveState();
-      document.getElementById('noteTitle').value = '';
-      document.getElementById('noteBody').value = '';
-      renderNotes();
-      renderCalendar(computeMetrics(getFilteredTrades()));
-      showToast('Journal note saved');
-    });
-
-    document.getElementById('addPlaybookBtn').addEventListener('click', () => {
-      const name = document.getElementById('playbookName').value.trim();
-      const rules = document.getElementById('playbookRules').value.trim();
-      if (!name || !rules) { showToast('Enter setup name & rules'); return; }
-      state.playbook.push({ id: 'p_' + Date.now(), name, rules });
-      saveState();
-      document.getElementById('playbookName').value = '';
-      document.getElementById('playbookRules').value = '';
-      renderPlaybook();
-      showToast('Setup added to Playbook');
-    });
-
-    document.getElementById('replayTradeSelect').addEventListener('change', () => drawReplay(0));
-    document.getElementById('replayResetBtn').addEventListener('click', () => { clearInterval(replayTimer); drawReplay(0); });
     document.querySelectorAll('.tf-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         replayTf = btn.dataset.tf;
@@ -2345,13 +2084,36 @@
         drawReplay(0);
       });
     });
+
     document.getElementById('replayPlayBtn').addEventListener('click', () => {
       clearInterval(replayTimer);
-      const maxSteps = replayTf === '1m' ? 36 : (replayTf === '5m' ? 22 : 12);
-      const speed = replayTf === '1m' ? 140 : (replayTf === '5m' ? 210 : 300);
-      let step = 1;
-      drawReplay(step);
-      replayTimer = setInterval(() => { step++; drawReplay(step); if (step >= maxSteps) clearInterval(replayTimer); }, speed);
+      const sel = document.getElementById('replayTradeSelect');
+      const list = window._replayTrades && window._replayTrades.length ? window._replayTrades : state.trades;
+      const t = list[sel.selectedIndex >= 0 ? sel.selectedIndex : 0] || list[0];
+      if (!t) return;
+
+      const startBars = 12;
+      initTvReplayChart(t, startBars);
+      let idx = startBars;
+      const entryIdx = Math.floor(tvCandlesAll.length * 0.22);
+
+      replayTimer = setInterval(() => {
+        if (!tvSeries || idx >= tvCandlesAll.length) {
+          clearInterval(replayTimer);
+          if (tvSeries && tvCandlesAll.length) {
+            tvSeries.setMarkers([
+              { time: tvCandlesAll[entryIdx].time, position: t.side === 'LONG' ? 'belowBar' : 'aboveBar', color: '#818CF8', shape: t.side === 'LONG' ? 'arrowUp' : 'arrowDown', text: `${t.side} @ ${t.entry || 100}` },
+              { time: tvCandlesAll[tvCandlesAll.length - 1].time, position: t.pnl >= 0 ? 'aboveBar' : 'belowBar', color: t.pnl >= 0 ? '#10B981' : '#EF4444', shape: 'circle', text: fmtMoney(t.pnl) }
+            ]);
+          }
+          return;
+        }
+        tvSeries.update(tvCandlesAll[idx]);
+        if (idx === entryIdx) {
+          tvSeries.setMarkers([{ time: tvCandlesAll[entryIdx].time, position: t.side === 'LONG' ? 'belowBar' : 'aboveBar', color: '#818CF8', shape: t.side === 'LONG' ? 'arrowUp' : 'arrowDown', text: `${t.side} @ ${t.entry || 100}` }]);
+        }
+        idx++;
+      }, 95);
     });
 
     document.getElementById('exportCsvBtn').addEventListener('click', () => {
