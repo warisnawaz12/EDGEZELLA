@@ -1919,10 +1919,7 @@
           <td class="py-2.5 theme-sub">${t.date}</td>
           <td class="py-2.5 font-semibold theme-text"><span class="inline-flex items-center gap-2">${getPairLogo(t.symbol)}<span>${t.symbol}</span></span></td>
           <td class="py-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span></td>
-          <td class="py-2.5">
-            <span class="font-semibold ${t.outcome === 'SL' ? 'text-rose-500' : (t.outcome === 'BE' ? 'text-amber-400' : 'text-emerald-500')}">${t.outcome || (t.pnl > 0 ? 'TP' : (t.pnl < 0 ? 'SL' : 'BE'))}</span>
-            <input type="text" value="${t.rMultiple || (t.pnl > 0 ? '+1R' : (t.pnl < 0 ? '-1R' : '0R'))}" onchange="updateTradeR('${t.id}', this.value)" class="ml-1 w-14 px-1.5 py-0.5 rounded theme-card border theme-border text-[11px] font-bold theme-text text-center focus:border-blue-500 focus:outline-none" title="Edit R-Multiple" />
-          </td>
+          <td class="py-2.5 font-semibold ${t.outcome === 'SL' ? 'text-rose-500' : (t.outcome === 'BE' ? 'text-amber-400' : 'text-emerald-500')}">${t.outcome || (t.pnl > 0 ? 'TP' : (t.pnl < 0 ? 'SL' : 'BE'))} (${t.rMultiple || (t.pnl > 0 ? '+1R' : (t.pnl < 0 ? '-1R' : '0R'))})</td>
           <td class="py-2.5 text-indigo-400">${t.strategy}</td>
           <td class="py-2.5 theme-sub max-w-[200px] truncate">${t.notes || '-'}</td>
           <td class="py-2.5 text-right font-bold ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtVal(t.pnl)}</td>
@@ -3127,7 +3124,10 @@
               <span class="theme-sub ml-1.5">${t.date}</span>
             </div>
           </div>
-          <span class="font-bold shrink-0 ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtMoney(t.pnl)}</span>
+          <div class="flex items-center gap-2 shrink-0">
+            <input type="text" class="csv-r-input w-14 px-1.5 py-1 rounded theme-panel border theme-border text-[11px] font-bold theme-text text-center focus:border-blue-500 focus:outline-none" data-idx="${idx}" value="${t.rMultiple || (t.pnl < 0 ? '-1R' : (t.pnl > 0 ? '+1R' : '0R'))}" onclick="event.stopPropagation()" title="Edit R" />
+            <span class="font-bold w-16 text-right ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtMoney(t.pnl)}</span>
+          </div>
         </label>
       `).join('');
       document.querySelectorAll('.csv-pick-cb').forEach(cb => cb.addEventListener('change', updateCsvSelectedCount));
@@ -3148,8 +3148,17 @@
     document.getElementById('confirmCsvImportBtn').addEventListener('click', async () => {
       const selected = [];
       document.querySelectorAll('.csv-pick-cb:checked').forEach(cb => {
-        const tr = pendingCsvTrades[parseInt(cb.dataset.idx, 10)];
-        if (tr) selected.push(tr);
+        const idx = parseInt(cb.dataset.idx, 10);
+        const tr = pendingCsvTrades[idx];
+        const rInp = document.querySelector(`.csv-r-input[data-idx="${idx}"]`);
+        if (tr) {
+          if (rInp) {
+            let rv = rInp.value.trim().toUpperCase();
+            if (rv && !rv.endsWith('R')) rv += 'R';
+            tr.rMultiple = rv || tr.rMultiple;
+          }
+          selected.push(tr);
+        }
       });
       if (!selected.length) { showToast('Select at least 1 trade'); return; }
       for (const tr of selected) state.trades.push(tr);
