@@ -2754,27 +2754,79 @@
       }
     }
 
+    function packNotes(tr) {
+      const base = (tr.notes || '').replace(/\s*\[R:[^\]]+\]/g, '').trim();
+      const r = tr.rMultiple || (tr.pnl < 0 ? '-1R' : (tr.pnl > 0 ? '+1R' : '0R'));
+      const o = tr.outcome || (tr.pnl < 0 ? 'SL' : (tr.pnl > 0 ? 'TP' : 'BE'));
+      return `${base} [R:${r}|${o}]`.trim();
+    }
+
+    function unpackTrade(row) {
+      const rawNotes = row.notes || '';
+      const m = rawNotes.match(/\[R:([^|\]]+)\|([^\]]+)\]/);
+      const cleanNotes = rawNotes.replace(/\s*\[R:[^\]]+\]/g, '').trim();
+      const pnl = Number(row.pnl) || 0;
+      return {
+        ...row,
+        pnl,
+        entry: Number(row.entry) || 0,
+        exit: Number(row.exit) || 0,
+        notes: cleanNotes,
+        rMultiple: m ? m[1] : (pnl < 0 ? '-1R' : (pnl > 0 ? '+1R' : '0R')),
+        outcome: m ? m[2] : (pnl < 0 ? 'SL' : (pnl > 0 ? 'TP' : 'BE'))
+      };
+    }
+
+    let _syncing = false;
     async function pullFromSupabase() {
-      if (!sbClient || !currentUser) return;
+      if (!sbClient || !currentUser || _syncing) return;
+      _syncing = true;
       try {
+        // 1. Push any unsynced local trades (added before auth ready / offline)
+        const localUnsynced = state.trades.filter(t => /^(t_|ex_|csv_)/.test(String(t.id)));
+        for (const tr of localUnsynced) {
+          const { data: ins, error: insErr } = await sbClient.from('trades').insert([{
+            user_id: currentUser.id,
+            date: tr.date, symbol: tr.symbol, side: tr.side,
+            entry: tr.entry || 0, exit: tr.exit || 0, pnl: tr.pnl,
+            strategy: tr.strategy || 'Discretionary', notes: packNotes(tr)
+          }]).select().single();
+          if (!insErr && ins) tr.id = ins.id;
+        }
+
+        // 2. Pull latest cloud state
         const [tRes, nRes, pRes] = await Promise.all([
           sbClient.from('trades').select('*').order('date', { ascending: true }),
           sbClient.from('notes').select('*').order('date', { ascending: true }),
           sbClient.from('playbook').select('*')
         ]);
-        if (tRes.data) state.trades = tRes.data.map(x => ({ ...x, pnl: Number(x.pnl), entry: Number(x.entry), exit: Number(x.exit) }));
+        if (tRes.error) { showToast('Sync error: ' + tRes.error.message); return; }
+        if (tRes.data) state.trades = tRes.data.map(unpackTrade);
         if (nRes.data) state.notes = nRes.data;
         if (pRes.data) state.playbook = pRes.data;
         saveState();
         renderAll();
-        showToast('Cloud trades synced!');
-      } catch (e) {}
+        showToast(`Synced ${state.trades.length} cloud trades!`);
+      } catch (e) {
+        showToast('Cloud sync failed');
+      } finally {
+        _syncing = false;
+      }
     }
 
-    async function syncInsert(table, row) {
+    async function syncInsert(table, row, localRef) {
       if (!sbClient || !currentUser) return;
       try {
-        await sbClient.from(table).insert([{ ...row, user_id: currentUser.id }]);
+        const payload = table === 'trades' ? { ...row, notes: packNotes(row), user_id: currentUser.id } : { ...row, user_id: currentUser.id };
+        const { data, error } = await sbClient.from(table).insert([payload]).select().single();
+        if (error) {
+          showToast('Cloud save error: ' + error.message);
+          return;
+        }
+        if (data && localRef) {
+          localRef.id = data.id;
+          saveState();
+        }
       } catch (e) {}
     }
 
@@ -2786,8 +2838,9 @@
         syncInsert('trades', {
           date: last.date, symbol: last.symbol, side: last.side,
           entry: last.entry, exit: last.exit, pnl: last.pnl,
+          outcome: last.outcome, rMultiple: last.rMultiple,
           strategy: last.strategy, notes: last.notes
-        });
+        }, last);
       }
     });
 
