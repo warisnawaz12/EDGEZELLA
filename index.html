@@ -9,6 +9,12 @@
   <link rel="apple-touch-icon" href="icon-512.png" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#080A0F" />
+  <meta name="description" content="EDGEZELLA PRO — AI-Powered Trading Journal built by Waris Nawaz (ASSASSIN TRADER). Track Exness trades, R-multiples, P&L calendar, and risk calculator." />
+  <meta name="keywords" content="EDGEZELLA, EDGEZELLA PRO, Trading Journal, Waris Nawaz, ASSASSIN TRADER, Forex Journal" />
+  <meta property="og:title" content="EDGEZELLA PRO — Trading Journal" />
+  <meta property="og:description" content="Your Trades, Analyzed. Your Edge, Discovered." />
+  <meta property="og:url" content="https://edgezella-pro.vercel.app/" />
+  <meta name="robots" content="index, follow" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="EDGEZELLA PRO" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2783,7 +2789,9 @@
       _syncing = true;
       try {
         // 1. Push any unsynced local trades (added before auth ready / offline)
-        const localUnsynced = state.trades.filter(t => /^(t_|ex_|csv_)/.test(String(t.id)));
+        const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const localUnsynced = state.trades.filter(t => !uuidRe.test(String(t.id)));
+        let pushedCount = 0;
         for (const tr of localUnsynced) {
           const { data: ins, error: insErr } = await sbClient.from('trades').insert([{
             user_id: currentUser.id,
@@ -2791,7 +2799,7 @@
             entry: tr.entry || 0, exit: tr.exit || 0, pnl: tr.pnl,
             strategy: tr.strategy || 'Discretionary', notes: packNotes(tr)
           }]).select().single();
-          if (!insErr && ins) tr.id = ins.id;
+          if (insErr) { showToast('Upload error: ' + insErr.message); } else if (ins) { tr.id = ins.id; pushedCount++; }
         }
 
         // 2. Pull latest cloud state
@@ -2806,7 +2814,7 @@
         if (pRes.data) state.playbook = pRes.data;
         saveState();
         renderAll();
-        showToast(`Synced ${state.trades.length} cloud trades!`);
+        showToast(pushedCount > 0 ? `Uploaded ${pushedCount} & synced ${state.trades.length} trades!` : `Synced ${state.trades.length} cloud trades!`);
       } catch (e) {
         showToast('Cloud sync failed');
       } finally {
