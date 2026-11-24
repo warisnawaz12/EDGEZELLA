@@ -1452,14 +1452,14 @@
         <button id="closeResetModalBtn" class="theme-sub hover:theme-text"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="space-y-2 text-xs theme-sub">
-        <p>This will clear all your local trades and notes, and restore default playbook &amp; rules.</p>
+        <p>This will clear your localStorage data and restore default settings.</p>
         <div id="resetCloudWarning" class="hidden p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">
-          <strong>Cloud Sync Active:</strong> All synced trades &amp; notes in your Supabase account (<span id="resetCloudEmail" class="font-semibold"></span>) will also be permanently deleted.
+          <strong>Cloud Sync Active:</strong> All synced trades, notes &amp; playbook rows in your Supabase account (<span id="resetCloudEmail" class="font-semibold"></span>) will also be permanently deleted.
         </div>
       </div>
       <div class="flex justify-end gap-2 pt-1">
         <button type="button" id="cancelResetModalBtn" class="px-4 py-2 rounded-lg theme-card border theme-border text-xs theme-text hover:border-indigo-500">Cancel</button>
-        <button type="button" id="confirmResetBtn" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white">Yes, Reset All</button>
+        <button type="button" id="confirmResetBtn" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white">Yes, Delete All</button>
       </div>
     </div>
   </div>
@@ -1861,7 +1861,7 @@
       const grid = document.getElementById(gridId);
       grid.innerHTML = '';
 
-      let monthlyPnl = 0, monthlyDays = 0, monthlyTrades = 0, monthlyWins = 0, dayCounter = 1;
+      let monthlyPnl = 0, monthlyDays = 0, monthlyTrades = 0, monthlyWins = 0, monthlyWinSum = 0, monthlyLosses = 0, monthlyLossSum = 0, dayCounter = 1;
       const totalWeeks = Math.ceil((firstDay + daysInMonth) / 7);
       const cellSizeCls = isLarge ? 'cal-cell cal-cell-lg' : 'cal-cell';
 
@@ -1886,7 +1886,12 @@
               monthlyPnl += dayPnl;
               monthlyDays++;
               monthlyTrades += dayTrades.length;
-              monthlyWins += dayTrades.filter(t => t.pnl > 0).length;
+              const winTrades = dayTrades.filter(t => t.pnl > 0);
+              const lossTrades = dayTrades.filter(t => t.pnl < 0);
+              monthlyWins += winTrades.length;
+              monthlyWinSum += winTrades.reduce((s, t) => s + t.pnl, 0);
+              monthlyLosses += lossTrades.length;
+              monthlyLossSum += lossTrades.reduce((s, t) => s + t.pnl, 0);
               weekPnl += dayPnl;
               weekDays++;
               const isWin = dayPnl >= 0;
@@ -1928,7 +1933,7 @@
         grid.appendChild(row);
       }
 
-      return { monthlyPnl, monthlyDays, monthlyTrades, monthlyWins };
+      return { monthlyPnl, monthlyDays, monthlyTrades, monthlyWins, monthlyWinSum, monthlyLosses, monthlyLossSum };
     }
 
     function renderCalendar(m) {
@@ -1944,6 +1949,8 @@
       document.getElementById('fullCalStats').innerHTML = `
         <span class="px-3 py-1.5 rounded-lg theme-card border theme-border">Trades: <strong class="theme-text">${stats.monthlyTrades}</strong></span>
         <span class="px-3 py-1.5 rounded-lg theme-card border theme-border">Win Rate: <strong class="text-indigo-400">${wr}%</strong></span>
+        <span class="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">Wins: <strong class="font-bold">${stats.monthlyWins} (+${fmtMoney(stats.monthlyWinSum)})</strong></span>
+        <span class="px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400">Losses: <strong class="font-bold">${stats.monthlyLosses} (-${fmtMoney(Math.abs(stats.monthlyLossSum))})</strong></span>
         <span class="px-3 py-1.5 rounded-lg theme-card border theme-border">Monthly P&amp;L: <strong class="${stats.monthlyPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtVal(stats.monthlyPnl)}</strong></span>
       `;
     }
@@ -2748,7 +2755,13 @@
             showToast('Supabase notes delete error: ' + nErr.message);
             return;
           }
+          const { error: pErr } = await sbClient.from('playbook').delete().eq('user_id', currentUser.id);
+          if (pErr) {
+            showToast('Supabase playbook delete error: ' + pErr.message);
+            return;
+          }
         }
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
         state.trades = [...DEFAULT_TRADES];
         state.notes = [...DEFAULT_NOTES];
         state.playbook = [...DEFAULT_PLAYBOOK];
@@ -2835,6 +2848,7 @@
     }
 
     async function setLoggedInUser(user) {
+      if (user && currentUser && currentUser.id === user.id && _lastSyncedUserId === user.id) return;
       currentUser = user;
       if (user) {
         document.getElementById('authBtnLabel').textContent = 'Synced';
@@ -2882,9 +2896,7 @@
         t.date || '',
         (t.symbol || '').trim().toUpperCase(),
         (t.side || '').trim().toUpperCase(),
-        (Number(t.pnl) || 0).toFixed(2),
-        (t.strategy || 'Discretionary').trim(),
-        packNotes(t)
+        (Number(t.pnl) || 0).toFixed(2)
       ].join('|');
     }
 
