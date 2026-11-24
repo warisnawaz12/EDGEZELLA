@@ -1439,6 +1439,31 @@
     </div>
   </div>
 
+  <!-- Reset Confirmation Modal -->
+  <div id="resetConfirmModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="modal-pop theme-panel border border-rose-500/40 rounded-xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold theme-text flex items-center gap-2">
+          <span class="w-7 h-7 rounded-lg bg-rose-500/15 text-rose-400 flex items-center justify-center">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+          </span>
+          Reset Journal Data?
+        </h3>
+        <button id="closeResetModalBtn" class="theme-sub hover:theme-text"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-2 text-xs theme-sub">
+        <p>This will clear all your local trades and notes, and restore default playbook &amp; rules.</p>
+        <div id="resetCloudWarning" class="hidden p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">
+          <strong>Cloud Sync Active:</strong> All synced trades &amp; notes in your Supabase account (<span id="resetCloudEmail" class="font-semibold"></span>) will also be permanently deleted.
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-1">
+        <button type="button" id="cancelResetModalBtn" class="px-4 py-2 rounded-lg theme-card border theme-border text-xs theme-text hover:border-indigo-500">Cancel</button>
+        <button type="button" id="confirmResetBtn" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white">Yes, Reset All</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast" class="hidden fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-lg theme-panel border border-indigo-500/40 text-xs theme-text shadow-xl"></div>
 
@@ -2689,14 +2714,55 @@
       e.target.value = '';
     });
 
+    function closeResetModal() {
+      document.getElementById('resetConfirmModal').classList.add('hidden');
+    }
     document.getElementById('resetDemoBtn').addEventListener('click', () => {
-      state.trades = [...DEFAULT_TRADES];
-      state.notes = [...DEFAULT_NOTES];
-      state.playbook = [...DEFAULT_PLAYBOOK];
-      state.rules = [...DEFAULT_RULES];
-      saveState();
-      renderAll();
-      showToast('Sample data restored');
+      const warn = document.getElementById('resetCloudWarning');
+      const emailEl = document.getElementById('resetCloudEmail');
+      if (sbClient && currentUser) {
+        warn.classList.remove('hidden');
+        emailEl.textContent = currentUser.email || 'connected account';
+      } else {
+        warn.classList.add('hidden');
+      }
+      document.getElementById('resetConfirmModal').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    });
+    document.getElementById('closeResetModalBtn').addEventListener('click', closeResetModal);
+    document.getElementById('cancelResetModalBtn').addEventListener('click', closeResetModal);
+    document.getElementById('confirmResetBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('confirmResetBtn');
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Resetting...';
+      try {
+        if (sbClient && currentUser) {
+          const { error: tErr } = await sbClient.from('trades').delete().eq('user_id', currentUser.id);
+          if (tErr) {
+            showToast('Supabase delete error: ' + tErr.message);
+            return;
+          }
+          const { error: nErr } = await sbClient.from('notes').delete().eq('user_id', currentUser.id);
+          if (nErr) {
+            showToast('Supabase notes delete error: ' + nErr.message);
+            return;
+          }
+        }
+        state.trades = [...DEFAULT_TRADES];
+        state.notes = [...DEFAULT_NOTES];
+        state.playbook = [...DEFAULT_PLAYBOOK];
+        state.rules = [...DEFAULT_RULES];
+        saveState();
+        renderAll();
+        closeResetModal();
+        showToast(sbClient && currentUser ? 'Local & Supabase trades deleted!' : 'Sample data restored');
+      } catch (err) {
+        showToast('Reset failed: ' + (err && err.message ? err.message : 'Unknown error'));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+      }
     });
 
     document.getElementById('desktopSidebarToggleBtn').addEventListener('click', () => {
@@ -2741,6 +2807,9 @@
     let sbClient = null;
     let currentUser = null;
     let authMode = 'signin';
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const _pendingSyncRefs = new WeakSet();
+    let _lastSyncedUserId = null;
 
     function initSupabase() {
       if (window.supabase && SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20) {
@@ -2752,10 +2821,13 @@
             setLoggedInUser(data.session.user);
           }
         });
-        sbClient.auth.onAuthStateChange((_event, session) => {
+        sbClient.auth.onAuthStateChange((event, session) => {
+          if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') return;
           if (session && session.user) {
-            setLoggedInUser(session.user);
-          } else {
+            if (!currentUser || currentUser.id !== session.user.id) {
+              setLoggedInUser(session.user);
+            }
+          } else if (event === 'SIGNED_OUT') {
             setLoggedInUser(null);
           }
         });
@@ -2770,8 +2842,12 @@
         document.getElementById('authForm').classList.add('hidden');
         document.getElementById('authLoggedInBox').classList.remove('hidden');
         document.getElementById('authUserEmail').textContent = user.email;
-        await pullFromSupabase();
+        if (_lastSyncedUserId !== user.id) {
+          _lastSyncedUserId = user.id;
+          await pullFromSupabase();
+        }
       } else {
+        _lastSyncedUserId = null;
         document.getElementById('authBtnLabel').textContent = 'Sign In';
         document.getElementById('authForm').classList.remove('hidden');
         document.getElementById('authLoggedInBox').classList.add('hidden');
@@ -2801,33 +2877,69 @@
       };
     }
 
+    function tradeSignature(t) {
+      return [
+        t.date || '',
+        (t.symbol || '').trim().toUpperCase(),
+        (t.side || '').trim().toUpperCase(),
+        (Number(t.pnl) || 0).toFixed(2),
+        (t.strategy || 'Discretionary').trim(),
+        packNotes(t)
+      ].join('|');
+    }
+
     let _syncing = false;
     async function pullFromSupabase() {
       if (!sbClient || !currentUser || _syncing) return;
       _syncing = true;
       try {
-        // 1. Push any unsynced local trades (added before auth ready / offline)
-        const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        const localUnsynced = state.trades.filter(t => !uuidRe.test(String(t.id)));
-        let pushedCount = 0;
-        for (const tr of localUnsynced) {
-          const { data: ins, error: insErr } = await sbClient.from('trades').insert([{
-            user_id: currentUser.id,
-            date: tr.date, symbol: tr.symbol, side: tr.side,
-            entry: tr.entry || 0, exit: tr.exit || 0, pnl: tr.pnl,
-            strategy: tr.strategy || 'Discretionary', notes: packNotes(tr)
-          }]).select().single();
-          if (insErr) { showToast('Upload error: ' + insErr.message); } else if (ins) { tr.id = ins.id; pushedCount++; }
-        }
-
-        // 2. Pull latest cloud state
+        // 1. Pull latest cloud state first to deduplicate before pushing
         const [tRes, nRes, pRes] = await Promise.all([
           sbClient.from('trades').select('*').order('date', { ascending: true }),
           sbClient.from('notes').select('*').order('date', { ascending: true }),
           sbClient.from('playbook').select('*')
         ]);
         if (tRes.error) { showToast('Sync error: ' + tRes.error.message); return; }
-        if (tRes.data) state.trades = tRes.data.map(unpackTrade);
+
+        const cloudTrades = (tRes.data || []).map(unpackTrade);
+        const cloudSigCounts = new Map();
+        for (const ct of cloudTrades) {
+          const sig = tradeSignature(ct);
+          cloudSigCounts.set(sig, (cloudSigCounts.get(sig) || 0) + 1);
+        }
+
+        // 2. Push only truly unsynced local trades not already in cloud or in-flight
+        const localUnsynced = state.trades.filter(t => !UUID_RE.test(String(t.id)) && !_pendingSyncRefs.has(t));
+        let pushedCount = 0;
+        for (const tr of localUnsynced) {
+          const sig = tradeSignature(tr);
+          const existingCount = cloudSigCounts.get(sig) || 0;
+          if (existingCount > 0) {
+            cloudSigCounts.set(sig, existingCount - 1);
+            continue;
+          }
+          _pendingSyncRefs.add(tr);
+          try {
+            const { data: ins, error: insErr } = await sbClient.from('trades').insert([{
+              user_id: currentUser.id,
+              date: tr.date, symbol: tr.symbol, side: tr.side,
+              entry: tr.entry || 0, exit: tr.exit || 0, pnl: tr.pnl,
+              strategy: tr.strategy || 'Discretionary', notes: packNotes(tr)
+            }]).select().single();
+            if (insErr) {
+              showToast('Upload error: ' + insErr.message);
+            } else if (ins) {
+              tr.id = ins.id;
+              cloudTrades.push(unpackTrade(ins));
+              pushedCount++;
+            }
+          } finally {
+            _pendingSyncRefs.delete(tr);
+          }
+        }
+
+        cloudTrades.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        state.trades = cloudTrades;
         if (nRes.data) state.notes = nRes.data;
         if (pRes.data) state.playbook = pRes.data;
         saveState();
@@ -2842,6 +2954,10 @@
 
     async function syncInsert(table, row, localRef) {
       if (!sbClient || !currentUser) return;
+      if (localRef) {
+        if (UUID_RE.test(String(localRef.id)) || _pendingSyncRefs.has(localRef)) return;
+        _pendingSyncRefs.add(localRef);
+      }
       try {
         const payload = table === 'trades' ? { ...row, notes: packNotes(row), user_id: currentUser.id } : { ...row, user_id: currentUser.id };
         const { data, error } = await sbClient.from(table).insert([payload]).select().single();
@@ -2853,7 +2969,9 @@
           localRef.id = data.id;
           saveState();
         }
-      } catch (e) {}
+      } catch (e) {} finally {
+        if (localRef) _pendingSyncRefs.delete(localRef);
+      }
     }
 
     // Hook existing Add Trade form to also push to Supabase
@@ -2926,13 +3044,13 @@
     document.getElementById('saveNoteBtn').addEventListener('click', () => {
       if (sbClient && currentUser && state.notes.length) {
         const last = state.notes[state.notes.length - 1];
-        syncInsert('notes', { date: last.date, title: last.title, mood: last.mood, body: last.body });
+        syncInsert('notes', { date: last.date, title: last.title, mood: last.mood, body: last.body }, last);
       }
     });
     document.getElementById('addPlaybookBtn').addEventListener('click', () => {
       if (sbClient && currentUser && state.playbook.length) {
         const last = state.playbook[state.playbook.length - 1];
-        syncInsert('playbook', { name: last.name, rules: last.rules });
+        syncInsert('playbook', { name: last.name, rules: last.rules }, last);
       }
     });
 
@@ -3270,7 +3388,7 @@
             date: tr.date, symbol: tr.symbol, side: tr.side,
             entry: tr.entry, exit: tr.exit, pnl: tr.pnl,
             strategy: tr.strategy, notes: tr.notes
-          });
+          }, tr);
         }
       }
       showToast(`Imported ${selected.length} selected trade(s)!`);
