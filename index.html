@@ -1995,7 +1995,12 @@
           <td class="py-2.5 theme-sub">${t.date}</td>
           <td class="py-2.5 font-semibold theme-text"><span class="inline-flex items-center gap-2">${getPairLogo(t.symbol)}<span>${t.symbol}</span></span></td>
           <td class="py-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${t.side === 'LONG' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-rose-500/15 text-rose-500'}">${t.side}</span></td>
-          <td class="py-2.5 font-semibold ${t.outcome === 'SL' ? 'text-rose-500' : (t.outcome === 'BE' ? 'text-amber-400' : 'text-emerald-500')}">${t.outcome || (t.pnl > 0 ? 'TP' : (t.pnl < 0 ? 'SL' : 'BE'))} (${t.rMultiple || (t.pnl > 0 ? '+1R' : (t.pnl < 0 ? '-1R' : '0R'))})</td>
+          <td class="py-2.5">
+            <div class="inline-flex items-center gap-1.5">
+              <span class="font-semibold ${t.outcome === 'SL' ? 'text-rose-500' : (t.outcome === 'BE' ? 'text-amber-400' : 'text-emerald-500')}">${t.outcome || (t.pnl > 0 ? 'TP' : (t.pnl < 0 ? 'SL' : 'BE'))}</span>
+              <input type="text" value="${t.rMultiple || (t.pnl > 0 ? '+1R' : (t.pnl < 0 ? '-1R' : '0R'))}" onchange="updateTradeR('${t.id}', this.value)" class="w-14 px-1.5 py-0.5 rounded theme-card border theme-border text-[11px] font-bold theme-text text-center focus:border-blue-500 focus:outline-none" title="Edit R (e.g. +1R, +3R, -1R)" />
+            </div>
+          </td>
           <td class="py-2.5 text-indigo-400">${t.strategy}</td>
           <td class="py-2.5 theme-sub max-w-[200px] truncate">${t.notes || '-'}</td>
           <td class="py-2.5 text-right font-bold ${t.pnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}">${fmtVal(t.pnl)}</td>
@@ -2371,15 +2376,34 @@
     }
 
     window.openDayDetail = function(dateStr) { switchTab('dayview'); renderDayView(dateStr); };
-    window.updateTradeR = function(id, val) {
+    window.updateTradeR = async function(id, val) {
       const tr = state.trades.find(x => String(x.id) === String(id));
       if (!tr) return;
       let clean = val.trim().toUpperCase();
       if (clean && !clean.endsWith('R')) clean += 'R';
+      const numVal = parseFloat(clean.replace(/[^0-9.-]/g, ''));
+      if (!isNaN(numVal) && numVal > 0 && !clean.startsWith('+')) clean = '+' + clean;
       tr.rMultiple = clean || '0R';
       saveState();
       renderAll();
-      showToast(`Updated R to ${tr.rMultiple}`);
+      if (typeof sbClient !== 'undefined' && sbClient && typeof currentUser !== 'undefined' && currentUser && typeof UUID_RE !== 'undefined' && UUID_RE.test(String(tr.id))) {
+        try {
+          const { error } = await sbClient
+            .from('trades')
+            .update({ notes: packNotes(tr) })
+            .eq('id', tr.id)
+            .eq('user_id', currentUser.id);
+          if (error) {
+            showToast('Cloud R sync error: ' + error.message);
+            return;
+          }
+          showToast(`Updated R to ${tr.rMultiple} (Synced)`);
+        } catch (err) {
+          showToast('Cloud R sync failed');
+        }
+      } else {
+        showToast(`Updated R to ${tr.rMultiple}`);
+      }
     };
     window.deleteTrade = function(id) { state.trades = state.trades.filter(t => t.id !== id); saveState(); renderAll(); showToast('Trade deleted'); };
     window.deleteNote = function(id) { state.notes = state.notes.filter(n => n.id !== id); saveState(); renderNotes(); renderCalendar(computeMetrics(getFilteredTrades())); showToast('Note deleted'); };
